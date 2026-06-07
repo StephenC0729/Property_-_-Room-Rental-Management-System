@@ -1,0 +1,51 @@
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Build Output ─────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+
+# ─── Environment Variables (NEVER commit real credentials) ────────────────────
+# .env.example is safe to commit — it has no real secrets
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.production.local
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ─── Editor ───────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ─── Supabase Local Dev (if you use Supabase CLI locally later) ───────────────
+supabase/.temp/
+supabase/.branches/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.local
+.cache/

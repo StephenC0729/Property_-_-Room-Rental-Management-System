@@ -1,0 +1,137 @@
+// ─── User & Auth ─────────────────────────────────────────────────────────────
+
+export type UserRole = 'super_admin' | 'admin' | 'operator'
+
+export interface UserProfile {
+  id: string
+  full_name: string
+  role: UserRole
+}
+
+// ─── Properties ──────────────────────────────────────────────────────────────
+
+export interface Property {
+  id: string
+  name: string
+  address: string
+  created_at: string
+}
+
+// ─── Rooms ───────────────────────────────────────────────────────────────────
+
+export type RoomStatus = 'occupied' | 'vacant' | 'maintenance'
+
+export interface Room {
+  id: string
+  property_id: string
+  code: string       // e.g. "1-A-1"
+  floor: string      // e.g. "A"
+  room_number: string
+  base_rent: number
+  status: RoomStatus
+  notes: string | null
+  created_at: string
+}
+
+// ─── Billing Status (derived, not stored) ────────────────────────────────────
+
+export type BillingStatus = 'paid' | 'overdue' | 'partial' | 'vacant' | 'maintenance'
+
+export interface RoomBillingStatus {
+  room_id: string
+  room_code: string
+  floor: string
+  base_rent: number
+  room_status: RoomStatus
+  billing_status: BillingStatus
+  tenant_name: string | null
+  tenant_phone: string | null
+  lease_id: string | null
+  monthly_rent: number | null
+  due_day: number | null
+  total_paid: number
+  outstanding_balance: number
+}
+
+// ─── Tenants ─────────────────────────────────────────────────────────────────
+
+export interface Tenant {
+  id: string
+  full_name: string
+  nric_passport: string
+  phone: string
+  emergency_name: string | null
+  emergency_relation: string | null
+  emergency_phone: string | null
+  notes: string | null
+  created_at: string
+  created_by: string | null
+}
+
+// ─── Leases ──────────────────────────────────────────────────────────────────
+
+export type LeaseStatus = 'active' | 'expired' | 'terminated'
+
+export interface Lease {
+  id: string
+  room_id: string
+  tenant_id: string
+  monthly_rent: number
+  due_day: number
+  move_in_date: string
+  expiry_date: string
+  status: LeaseStatus
+  security_deposit: number
+  utility_deposit: number
+  notes: string | null
+  created_at: string
+  created_by: string | null
+  // Joined fields
+  room?: Room
+  tenant?: Tenant
+}
+
+// ─── Payments ────────────────────────────────────────────────────────────────
+
+export type PaymentMethod = 'cash' | 'bank_transfer'
+
+export interface Payment {
+  id: string
+  lease_id: string
+  room_id: string
+  tenant_id: string
+  amount: number
+  payment_method: PaymentMethod
+  reference: string | null
+  billing_month: string  // ISO date, always day 1: e.g. "2026-06-01"
+  paid_at: string
+  recorded_by: string | null
+  notes: string | null
+  // Joined fields
+  room?: Room
+  tenant?: Tenant
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+export type AuditAction =
+  | 'PAYMENT_LOGGED'
+  | 'TENANT_CREATED'
+  | 'TENANT_UPDATED'
+  | 'LEASE_CREATED'
+  | 'LEASE_TERMINATED'
+  | 'ROOM_STATUS_CHANGED'
+  | 'PROPERTY_CREATED'
+  | 'PROPERTY_UPDATED'
+
+export interface AuditLog {
+  id: string
+  user_id: string | null
+  action: AuditAction
+  target_type: string | null
+  target_id: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  // Joined
+  user_profile?: UserProfile
+}
