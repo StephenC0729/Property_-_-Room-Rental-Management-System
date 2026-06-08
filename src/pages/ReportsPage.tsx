@@ -1,3 +1,448 @@
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  Download, TrendingUp, AlertCircle, CheckCircle2,
+  CircleDot, Home, ChevronUp, ChevronDown, Filter,
+} from 'lucide-react'
+import { format, subMonths, startOfMonth } from 'date-fns'
+import { supabase } from '@/lib/supabase'
+import { exportToCsv, formatRinggit } from '@/utils/exportCsv'
+import { formatBillingMonth } from '@/utils/whatsapp'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Property, RoomBillingStatus } from '@/types'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type SortKey = 'property' | 'room' | 'tenant' | 'rent' | 'paid' | 'outstanding'
+type SortDir = 'asc' | 'desc'
+type StatusFilter = 'all' | 'overdue' | 'partial' | 'paid' | 'vacant'
+
+interface ReportRow {
+  room_id:      string
+  property_id:  string
+  property_name: string
+  room_code:    string
+  tenant_name:  string | null
+  monthly_rent: number
+  total_paid:   number
+  outstanding:  number
+  status:       string
+}
+
+// ─── Month helpers ────────────────────────────────────────────────────────────
+
+function buildMonthOptions(): { value: string; label: string }[] {
+  const options = []
+  for (let i = 0; i < 13; i++) {
+    const d = startOfMonth(subMonths(new Date(), i))
+    options.push({
+      value: d.toISOString().slice(0, 10),   // "2026-06-01"
+      label: format(d, 'MMMM yyyy'),
+    })
+  }
+  return options
+}
+
+const MONTH_OPTIONS = buildMonthOptions()
+
+// ─── Data hooks ───────────────────────────────────────────────────────────────
+
+function useProperties() {
+  return useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('properties').select('*').order('name')
+      if (error) throw error
+      return data as Property[]
+    },
+  })
+}
+
+/** For the current month, read directly from room_billing_status_v */
+function useCurrentMonthReport() {
+  return useQuery({
+    queryKey: ['report', 'current-month'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('room_billing_status_v')
+        .select('*')
+        .order('room_code')
+      if (error) throw error
+      return data as (RoomBillingStatus & { property_id: string })[]
+    },
+  })
+}
+
+/** For historical months: aggregate payment_history for a given billing_month
+ *  and join with lease/room/tenant/property. */
+function useHistoricalReport(billingMonth: string) {
+  return useQuery({
+    queryKey: ['report', billingMonth],
+    queryFn: async () => {
+      // Payments grouped by room/lease for this month
+      const { data: payments, error: pErr } = await supabase
+        .from('payment_history')
+        .select('room_id, lease_id, amount')
+        .eq('billing_month', billingMonth)
+      if (pErr) throw pErr
+
+      // All leases that were active at some point covering this month
+      const { data: leases, error: lErr } = await supabase
+        .from('leases')
+        .select(`
+          id, room_id, monthly_rent,
+          tenants ( full_name ),
+          rooms ( id, code, floor, room_number, base_rent, property_id,
+                  properties ( name ) )
+        `)
+        .lte('move_in_date', billingMonth)
+        .gte('expiry_date',  billingMonth)
+      if (lErr) throw lErr
+
+      // Sum payments per lease_id
+      const paidMap: Record<string, number> = {}
+      payments?.forEach(p => {
+        paidMap[p.lease_id] = (paidMap[p.lease_id] ?? 0) + p.amount
+      })
+
+      type RoomRef = {
+        id: string; code: string; floor: string; room_number: string; base_rent: number; property_id: string;
+        properties?: { name: string } | null
+      }
+      type TenantRef = { full_name: string }
+      type LeaseRef = {
+        id: string; room_id: string; monthly_rent: number;
+        tenants?: TenantRef | null;
+        rooms?: RoomRef | null
+      }
+
+      return (leases as LeaseRef[]).map(l => {
+        const paid    = paidMap[l.id] ?? 0
+        const rent    = l.monthly_rent
+        const balance = Math.max(0, rent - paid)
+        const status  = paid >= rent ? 'paid' : paid > 0 ? 'partial' : 'overdue'
+        return {
+          room_id:       l.room_id,
+          property_id:   l.rooms?.property_id ?? '',
+          property_name: l.rooms?.properties?.name ?? '—',
+          room_code:     l.rooms?.code ?? '—',
+          tenant_name:   l.tenants?.full_name ?? null,
+          monthly_rent:  rent,
+          total_paid:    paid,
+          outstanding:   balance,
+          status,
+        } satisfies ReportRow
+      })
+    },
+    enabled: true,
+  })
+}
+
+// ─── Stat Card ─────────────────────────────────────────────────────────────────
+
+function StatCard({ label, value, sub, icon: Icon, color, bgColor }:
+  { label: string; value: string; sub?: string; icon: React.ComponentType<{ className?: string }>; color: string; bgColor: string }) {
+  return (
+    <Card className="border-white/8 bg-white/[0.03] p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">{label}</p>
+          <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
+          {sub && <p className="mt-0.5 text-xs text-white/25">{sub}</p>}
+        </div>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bgColor}`}>
+          <Icon className={`h-5 w-5 ${color}`} />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ─── Sort Header ──────────────────────────────────────────────────────────────
+
+function SortTh({ label, sortKey, current, dir, onSort }:
+  { label: string; sortKey: SortKey; current: SortKey; dir: SortDir; onSort: (k: SortKey) => void }) {
+  const active = current === sortKey
+  return (
+    <button
+      onClick={() => onSort(sortKey)}
+      className="flex items-center gap-1 text-left text-xs font-medium text-white/40 uppercase tracking-wider hover:text-white/70 transition-colors"
+    >
+      {label}
+      {active
+        ? dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+        : <ChevronUp className="h-3 w-3 opacity-20" />}
+    </button>
+  )
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+const STATUS_CFG: Record<string, { label: string; cls: string; dot: string }> = {
+  paid:        { label: 'Paid',        cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', dot: 'bg-emerald-400' },
+  partial:     { label: 'Partial',     cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20',   dot: 'bg-orange-400' },
+  overdue:     { label: 'Overdue',     cls: 'bg-red-500/10 text-red-400 border-red-500/20',             dot: 'bg-red-400' },
+  vacant:      { label: 'Vacant',      cls: 'bg-white/5 text-white/30 border-white/10',                 dot: 'bg-white/30' },
+  maintenance: { label: 'Maintenance', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',    dot: 'bg-yellow-400' },
+  upcoming:    { label: 'Upcoming',    cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20',          dot: 'bg-blue-400' },
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 export function ReportsPage() {
-  return <div className="p-8">Reports — Coming Soon</div>
+  const today        = startOfMonth(new Date())
+  const currentMonth = today.toISOString().slice(0, 10)
+
+  const [selectedMonth,  setSelectedMonth]  = useState(currentMonth)
+  const [propertyFilter, setPropertyFilter] = useState<string>('all')
+  const [statusFilter,   setStatusFilter]   = useState<StatusFilter>('all')
+  const [sortKey,        setSortKey]        = useState<SortKey>('outstanding')
+  const [sortDir,        setSortDir]        = useState<SortDir>('desc')
+
+  const isCurrentMonth = selectedMonth === currentMonth
+
+  const { data: properties }  = useProperties()
+  const { data: currentData, isLoading: currentLoading } = useCurrentMonthReport()
+  const { data: histData,    isLoading: histLoading }    = useHistoricalReport(selectedMonth)
+
+  // Merge current-month view data with property names
+  const currentRows = useMemo((): ReportRow[] => {
+    if (!currentData) return []
+    const propMap = Object.fromEntries(properties?.map(p => [p.id, p.name]) ?? [])
+    return currentData.map(r => ({
+      room_id:       r.room_id,
+      property_id:   r.property_id,
+      property_name: propMap[r.property_id] ?? '—',
+      room_code:     r.room_code,
+      tenant_name:   r.tenant_name,
+      monthly_rent:  r.monthly_rent ?? 0,
+      total_paid:    r.total_paid,
+      outstanding:   r.outstanding_balance,
+      status:        r.billing_status,
+    }))
+  }, [currentData, properties])
+
+  const rawRows: ReportRow[] = isCurrentMonth ? currentRows : (histData ?? [])
+  const isLoading = isCurrentMonth ? currentLoading : histLoading
+
+  // ── Filters ────────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    let rows = rawRows
+    if (propertyFilter !== 'all') rows = rows.filter(r => r.property_id === propertyFilter)
+    if (statusFilter   !== 'all') rows = rows.filter(r => r.status === statusFilter)
+    return [...rows].sort((a, b) => {
+      const mul = sortDir === 'asc' ? 1 : -1
+      switch (sortKey) {
+        case 'property':     return mul * a.property_name.localeCompare(b.property_name)
+        case 'room':         return mul * a.room_code.localeCompare(b.room_code)
+        case 'tenant':       return mul * (a.tenant_name ?? '').localeCompare(b.tenant_name ?? '')
+        case 'rent':         return mul * (a.monthly_rent - b.monthly_rent)
+        case 'paid':         return mul * (a.total_paid - b.total_paid)
+        case 'outstanding':  return mul * (a.outstanding - b.outstanding)
+        default:             return 0
+      }
+    })
+  }, [rawRows, propertyFilter, statusFilter, sortKey, sortDir])
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const occupied = rawRows.filter(r => r.status !== 'vacant' && r.status !== 'maintenance')
+    return {
+      totalOutstanding: occupied.reduce((s, r) => s + r.outstanding, 0),
+      totalCollected:   occupied.reduce((s, r) => s + r.total_paid, 0),
+      overdueCount:     occupied.filter(r => r.status === 'overdue').length,
+      partialCount:     occupied.filter(r => r.status === 'partial').length,
+      paidCount:        occupied.filter(r => r.status === 'paid').length,
+    }
+  }, [rawRows])
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
+  // ── CSV Export ─────────────────────────────────────────────────────────────
+  function handleExport() {
+    const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
+    exportToCsv(
+      filtered.map(r => ({
+        'Property':       r.property_name,
+        'Room Code':      r.room_code,
+        'Tenant':         r.tenant_name ?? '—',
+        'Monthly Rent':   r.monthly_rent.toFixed(2),
+        'Paid (RM)':      r.total_paid.toFixed(2),
+        'Outstanding (RM)': r.outstanding.toFixed(2),
+        'Status':         r.status,
+      })),
+      `PRMS_Outstanding_${monthLabel.replace(' ', '_')}`
+    )
+  }
+
+  const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
+      </div>
+
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Monthly Rent Report</h1>
+          <p className="mt-1 text-sm text-white/40">{monthLabel} · Outstanding balance summary</p>
+        </div>
+        <Button
+          onClick={handleExport}
+          disabled={isLoading || !filtered.length}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
+        >
+          <Download className="mr-2 h-4 w-4" /> Export CSV
+        </Button>
+      </div>
+
+      {/* Controls row */}
+      <div className="mb-5 flex flex-wrap gap-3">
+        {/* Month picker */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white/35 shrink-0">Month</span>
+          <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white
+                       focus:outline-none focus:border-violet-500/50 cursor-pointer"
+          >
+            {MONTH_OPTIONS.map(m => (
+              <option key={m.value} value={m.value} className="bg-[#1a1a2e]">{m.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Property filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-white/30 shrink-0" />
+          <select
+            value={propertyFilter}
+            onChange={e => setPropertyFilter(e.target.value)}
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white
+                       focus:outline-none focus:border-violet-500/50 cursor-pointer"
+          >
+            <option value="all" className="bg-[#1a1a2e]">All Properties</option>
+            {properties?.map(p => (
+              <option key={p.id} value={p.id} className="bg-[#1a1a2e]">{p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status filter tabs */}
+        <div className="flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1">
+          {(['all', 'overdue', 'partial', 'paid'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition-all ${
+                statusFilter === s ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white/70'
+              }`}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      {isLoading ? (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />)}
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+          <StatCard label="Outstanding" value={formatRinggit(stats.totalOutstanding)}
+            icon={AlertCircle} color={stats.totalOutstanding > 0 ? 'text-red-400' : 'text-white/40'}
+            bgColor={stats.totalOutstanding > 0 ? 'bg-red-500/15' : 'bg-white/5'}
+            sub="unpaid this month" />
+          <StatCard label="Collected" value={formatRinggit(stats.totalCollected)}
+            icon={TrendingUp} color="text-emerald-400" bgColor="bg-emerald-500/15"
+            sub="total received" />
+          <StatCard label="Overdue / Partial" value={`${stats.overdueCount + stats.partialCount}`}
+            icon={CircleDot} color={stats.overdueCount > 0 ? 'text-orange-400' : 'text-white/40'}
+            bgColor={stats.overdueCount > 0 ? 'bg-orange-500/15' : 'bg-white/5'}
+            sub={`${stats.overdueCount} overdue, ${stats.partialCount} partial`} />
+          <StatCard label="Fully Paid" value={`${stats.paidCount}`}
+            icon={CheckCircle2} color="text-emerald-400" bgColor="bg-emerald-500/15"
+            sub="rooms cleared" />
+        </div>
+      )}
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-white/5" />)}
+        </div>
+      ) : !filtered.length ? (
+        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
+          <Home className="mx-auto mb-4 h-12 w-12 text-white/15" />
+          <h3 className="text-base font-semibold text-white/40">No data for {monthLabel}</h3>
+          <p className="mt-1 text-sm text-white/25">
+            {statusFilter !== 'all'
+              ? `No ${statusFilter} rooms for this period. Try "All" status.`
+              : 'No rooms or leases found for this month.'}
+          </p>
+        </Card>
+      ) : (
+        <Card className="border-white/8 bg-white/[0.03] overflow-hidden">
+          {/* Table head */}
+          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-white/[0.02]">
+            <SortTh label="Property"    sortKey="property"    current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Room"        sortKey="room"        current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Tenant"      sortKey="tenant"      current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Rent"        sortKey="rent"        current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Paid"        sortKey="paid"        current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Outstanding" sortKey="outstanding" current={sortKey} dir={sortDir} onSort={handleSort} />
+            <span className="text-xs font-medium text-white/40 uppercase tracking-wider">Status</span>
+          </div>
+
+          {/* Table rows */}
+          {filtered.map((row, idx) => {
+            const cfg = STATUS_CFG[row.status] ?? STATUS_CFG.vacant
+            return (
+              <div
+                key={row.room_id}
+                className={`grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 items-center
+                  text-sm transition-colors hover:bg-white/[0.02]
+                  ${idx !== filtered.length - 1 ? 'border-b border-white/4' : ''}`}
+              >
+                <span className="text-white/60 truncate text-xs">{row.property_name}</span>
+                <span className="font-bold text-white whitespace-nowrap">{row.room_code}</span>
+                <span className="text-white/70 truncate">{row.tenant_name ?? <span className="text-white/25">—</span>}</span>
+                <span className="text-white/50 text-right whitespace-nowrap">{formatRinggit(row.monthly_rent)}</span>
+                <span className="text-emerald-400 text-right whitespace-nowrap font-medium">{formatRinggit(row.total_paid)}</span>
+                <span className={`text-right whitespace-nowrap font-bold ${row.outstanding > 0 ? 'text-red-400' : 'text-white/30'}`}>
+                  {formatRinggit(row.outstanding)}
+                </span>
+                <Badge className={`text-xs justify-center ${cfg.cls}`}>{cfg.label}</Badge>
+              </div>
+            )
+          })}
+
+          {/* Totals row */}
+          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3.5 border-t border-white/10 bg-white/[0.03]">
+            <span className="text-xs font-semibold text-white/40 uppercase tracking-wider col-span-3">
+              {filtered.length} rooms shown
+            </span>
+            <span className="text-right text-sm font-semibold text-white/50 whitespace-nowrap">
+              {formatRinggit(filtered.reduce((s, r) => s + r.monthly_rent, 0))}
+            </span>
+            <span className="text-right text-sm font-semibold text-emerald-400 whitespace-nowrap">
+              {formatRinggit(filtered.reduce((s, r) => s + r.total_paid, 0))}
+            </span>
+            <span className="text-right text-sm font-bold text-red-400 whitespace-nowrap">
+              {formatRinggit(filtered.reduce((s, r) => s + r.outstanding, 0))}
+            </span>
+            <span />
+          </div>
+        </Card>
+      )}
+    </div>
+  )
 }
