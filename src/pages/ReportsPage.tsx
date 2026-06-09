@@ -95,7 +95,7 @@ function useHistoricalReport(billingMonth: string) {
         .select(`
           id, room_id, monthly_rent,
           tenants ( full_name ),
-          rooms ( id, code, floor, room_number, base_rent, property_id,
+          rooms ( id, code, room_number, base_rent, property_id,
                   properties ( name ) )
         `)
         .lte('move_in_date', billingMonth)
@@ -109,7 +109,7 @@ function useHistoricalReport(billingMonth: string) {
       })
 
       type RoomRef = {
-        id: string; code: string; floor: string; room_number: string; base_rent: number; property_id: string;
+        id: string; code: string; room_number: string; base_rent: number; property_id: string;
         properties?: { name: string } | null
       }
       type TenantRef = { full_name: string }

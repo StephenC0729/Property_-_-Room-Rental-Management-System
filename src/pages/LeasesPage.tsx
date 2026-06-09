@@ -184,7 +184,7 @@ export function LeasesPage() {
               : `No ${activeTab} leases on record.`}
           </p>
           {(activeTab === 'all' || activeTab === 'active') && (
-            <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white">
+            <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
               <Link to="/leases/new"><Plus className="mr-2 h-4 w-4" /> New Lease</Link>
             </Button>
           )}

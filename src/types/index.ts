@@ -25,7 +25,6 @@ export interface Room {
   id: string
   property_id: string
   code: string       // e.g. "1-A-1"
-  floor: string      // e.g. "A"
   room_number: string
   base_rent: number
   status: RoomStatus
@@ -40,7 +39,7 @@ export type BillingStatus = 'paid' | 'overdue' | 'partial' | 'vacant' | 'mainten
 export interface RoomBillingStatus {
   room_id: string
   room_code: string
-  floor: string
+  room_number: string
   base_rent: number
   room_status: RoomStatus
   billing_status: BillingStatus
@@ -58,8 +57,8 @@ export interface RoomBillingStatus {
 export interface Tenant {
   id: string
   full_name: string
-  nric_passport: string
-  phone: string
+  nric_passport: string | null
+  phone: string | null
   emergency_name: string | null
   emergency_relation: string | null
   emergency_phone: string | null

@@ -66,7 +66,7 @@ function useVacantRooms(propertyId: string | null) {
   return useQuery({
     queryKey: ['vacant-rooms', propertyId],
     queryFn: async () => {
-      let q = supabase.from('rooms').select('*').eq('status', 'vacant').order('floor').order('room_number')
+      let q = supabase.from('rooms').select('*').eq('status', 'vacant').order('room_number')
       if (propertyId) q = q.eq('property_id', propertyId)
       const { data, error } = await q
       if (error) throw error
@@ -85,7 +85,7 @@ function TenantPicker({ value, onChange }: { value: string; onChange: (id: strin
   const filtered = tenants?.filter(t => {
     if (!search) return true
     const q = search.toLowerCase()
-    return t.full_name.toLowerCase().includes(q) || t.nric_passport.toLowerCase().includes(q) || t.phone.includes(q)
+    return t.full_name.toLowerCase().includes(q) || (t.nric_passport && t.nric_passport.toLowerCase().includes(q)) || (t.phone && t.phone.includes(q))
   }) ?? []
 
   if (selected) {
@@ -97,7 +97,7 @@ function TenantPicker({ value, onChange }: { value: string; onChange: (id: strin
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{selected.full_name}</p>
-            <p className="text-xs text-white/40">{selected.nric_passport} · {selected.phone}</p>
+            <p className="text-xs text-white/40">{selected.nric_passport ?? 'No NRIC'} · {selected.phone ?? 'No phone'}</p>
           </div>
         </div>
         <Button size="sm" variant="ghost" onClick={() => onChange('')} className="text-white/40 hover:text-white text-xs h-7">
@@ -128,7 +128,7 @@ function TenantPicker({ value, onChange }: { value: string; onChange: (id: strin
             </div>
             <div className="min-w-0">
               <p className="text-sm text-white truncate">{t.full_name}</p>
-              <p className="text-xs text-white/30 truncate">{t.nric_passport}</p>
+              <p className="text-xs text-white/30 truncate">{t.nric_passport ?? 'No NRIC'}</p>
             </div>
           </button>
         ))}

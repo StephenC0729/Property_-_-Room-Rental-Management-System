@@ -188,11 +188,12 @@ function PropertyDialog({ open, onClose, editProperty }: PropertyDialogProps) {
 interface PropertyCardProps {
   property: Property
   stats?: { paid: number; overdue: number; partial: number; vacant: number; maintenance: number; total: number }
+  statsLoading: boolean
   isAdmin: boolean
   onEdit: (property: Property) => void
 }
 
-function PropertyCard({ property, stats, isAdmin, onEdit }: PropertyCardProps) {
+function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: PropertyCardProps) {
   const alertCount = (stats?.overdue ?? 0) + (stats?.partial ?? 0)
   const occupancyPct = stats && stats.total > 0
     ? Math.round(((stats.total - stats.vacant - stats.maintenance) / stats.total) * 100)
@@ -229,7 +230,14 @@ function PropertyCard({ property, stats, isAdmin, onEdit }: PropertyCardProps) {
         </div>
 
         {/* Stats row */}
-        {stats ? (
+        {statsLoading ? (
+          /* Still fetching room data */
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-full bg-white/10" />
+            <Skeleton className="h-3 w-2/3 bg-white/10" />
+          </div>
+        ) : stats ? (
+          /* Has rooms — show full stats */
           <div className="space-y-3">
             {/* Occupancy bar */}
             <div>
@@ -273,16 +281,26 @@ function PropertyCard({ property, stats, isAdmin, onEdit }: PropertyCardProps) {
               <span className="text-xs text-white/25">{stats.total} total rooms</span>
               <Link
                 to={`/properties/${property.id}`}
-                className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium"
               >
-                View Room Matrix <ArrowRight className="h-3 w-3" />
+                Manage Rooms <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-full bg-white/10" />
-            <Skeleton className="h-3 w-2/3 bg-white/10" />
+          /* No rooms added yet */
+          <div className="flex flex-col items-center justify-center gap-3 py-4 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
+            <Home className="h-7 w-7 text-white/15" />
+            <div className="text-center">
+              <p className="text-xs font-medium text-white/30">No rooms added yet</p>
+              <p className="text-[11px] text-white/20 mt-0.5">Click below to add your first room</p>
+            </div>
+            <Link
+              to={`/properties/${property.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Rooms
+            </Link>
           </div>
         )}
       </div>
@@ -298,7 +316,7 @@ export function PropertiesPage() {
   const [editTarget, setEditTarget] = useState<Property | null>(null)
 
   const { data: properties, isLoading } = useProperties()
-  const { data: roomStats } = usePropertyRoomStats()
+  const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
 
   function openAdd() { setEditTarget(null); setDialogOpen(true) }
   function openEdit(p: Property) { setEditTarget(p); setDialogOpen(true) }
@@ -353,7 +371,7 @@ export function PropertiesPage() {
             {isAdmin() ? 'Click "Add Property" to set up your first house.' : 'Ask your admin to add properties.'}
           </p>
           {isAdmin() && (
-            <Button onClick={openAdd} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white">
+            <Button onClick={openAdd} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
               <Plus className="mr-2 h-4 w-4" /> Add First Property
             </Button>
           )}
@@ -365,6 +383,7 @@ export function PropertiesPage() {
               key={property.id}
               property={property}
               stats={roomStats?.[property.id]}
+              statsLoading={statsLoading}
               isAdmin={isAdmin()}
               onEdit={openEdit}
             />

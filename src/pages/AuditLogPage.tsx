@@ -96,12 +96,12 @@ function useAuditLog(dateRange: DateRange, actionFilter: AuditAction | 'all') {
   return useQuery({
     queryKey: ['audit-log', dateRange, actionFilter],
     queryFn: async () => {
+      // Step 1: Fetch audit entries WITHOUT a join
+      // (audit_log.user_id → auth.users, not public.user_profiles,
+      //  so PostgREST can't auto-join — we do it manually below)
       let q = supabase
         .from('audit_log')
-        .select(`
-          *,
-          user_profiles ( full_name, role )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE)
 
@@ -117,9 +117,30 @@ function useAuditLog(dateRange: DateRange, actionFilter: AuditAction | 'all') {
         q = q.eq('action', actionFilter)
       }
 
-      const { data, error } = await q
-      if (error) throw error
-      return data as AuditEntry[]
+      const { data: entries, error: entriesError } = await q
+      if (entriesError) throw entriesError
+      if (!entries?.length) return [] as AuditEntry[]
+
+      // Step 2: Fetch user profiles for the unique user_ids found
+      const userIds = [...new Set(entries.map(e => e.user_id).filter(Boolean))]
+      const profileMap: Record<string, { full_name: string; role: string }> = {}
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, role')
+          .in('id', userIds)
+
+        profiles?.forEach(p => {
+          profileMap[p.id] = { full_name: p.full_name, role: p.role }
+        })
+      }
+
+      // Step 3: Merge profile data onto each entry
+      return entries.map(e => ({
+        ...e,
+        user_profiles: e.user_id ? (profileMap[e.user_id] ?? null) : null,
+      })) as AuditEntry[]
     },
     refetchInterval: 30_000,   // auto-refresh every 30s
   })
@@ -209,7 +230,7 @@ export function AuditLogPage() {
   const [actionFilter, setActionFilter] = useState<AuditAction | 'all'>('all')
   const [search,       setSearch]       = useState('')
 
-  const { data: entries, isLoading, isFetching, refetch } = useAuditLog(dateRange, actionFilter)
+  const { data: entries, isLoading, isFetching, isError, error, refetch } = useAuditLog(dateRange, actionFilter)
 
   // Client-side search (target_id or metadata values)
   const filtered = useMemo(() => {
@@ -336,6 +357,18 @@ export function AuditLogPage() {
               </div>
             </div>
           ))}
+        </Card>
+      ) : isError ? (
+        <Card className="border-red-500/20 bg-red-500/5 p-8 text-center">
+          <Shield className="mx-auto mb-3 h-10 w-10 text-red-400/50" />
+          <h3 className="text-sm font-semibold text-red-400">Failed to load audit log</h3>
+          <p className="mt-1 text-xs text-red-300/50">
+            {(error as Error)?.message ?? 'An unexpected error occurred. Check the browser console for details.'}
+          </p>
+          <button onClick={() => refetch()}
+            className="mt-4 text-xs text-red-400 hover:text-red-300 underline underline-offset-2 self-center">
+            Try again
+          </button>
         </Card>
       ) : !filtered.length ? (
         <Card className="border-white/8 bg-white/[0.03] p-12 text-center">

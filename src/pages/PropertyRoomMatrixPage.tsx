@@ -60,7 +60,6 @@ function useRoomMatrix(propertyId: string) {
         .from('room_billing_status_v')
         .select('*')
         .eq('property_id', propertyId)
-        .order('floor')
         .order('room_number')
       if (error) throw error
       return data as RoomBillingStatus[]
@@ -72,7 +71,6 @@ function useRoomMatrix(propertyId: string) {
 // ─── Room CRUD ────────────────────────────────────────────────────────────────
 
 const roomSchema = z.object({
-  floor: z.string().min(1, 'Floor is required').max(5),
   room_number: z.string().min(1, 'Room number is required').max(10),
   base_rent: z.coerce.number().min(0, 'Must be 0 or more'),
   status: z.enum(['vacant', 'maintenance']),
@@ -80,12 +78,12 @@ const roomSchema = z.object({
 })
 type RoomFormValues = z.infer<typeof roomSchema>
 
-/** Derives a room code from the property name + floor + room number.
- *  "House 1" + "A" + "2" → "1-A-2"
+/** Derives a room code from the property name + room number.
+ *  "House 1" + "R1" → "1-R1"
  */
-function buildRoomCode(propertyName: string, floor: string, roomNumber: string): string {
+function buildRoomCode(propertyName: string, roomNumber: string): string {
   const houseNum = propertyName.match(/\d+/)?.[0] ?? '1'
-  return `${houseNum}-${floor.toUpperCase()}-${roomNumber}`
+  return `${houseNum}-${roomNumber}`
 }
 
 interface RoomDialogProps {
@@ -104,28 +102,23 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
     resolver: zodResolver(roomSchema),
     values: editRoom
       ? {
-          floor: editRoom.floor,
           room_number: editRoom.room_number,
           base_rent: editRoom.base_rent,
           status: editRoom.status === 'occupied' ? 'vacant' : editRoom.status as 'vacant' | 'maintenance',
           notes: editRoom.notes ?? '',
         }
-      : { floor: '', room_number: '', base_rent: 0, status: 'vacant', notes: '' },
+      : { room_number: '', base_rent: 0, status: 'vacant', notes: '' },
   })
 
-  const floor = form.watch('floor')
   const roomNumber = form.watch('room_number')
-  const codePreview = floor && roomNumber
-    ? buildRoomCode(propertyName, floor, roomNumber)
-    : '—'
+  const codePreview = roomNumber ? buildRoomCode(propertyName, roomNumber) : '—'
 
   const mutation = useMutation({
     mutationFn: async (values: RoomFormValues) => {
-      const code = buildRoomCode(propertyName, values.floor, values.room_number)
+      const code = buildRoomCode(propertyName, values.room_number)
       const payload = {
         property_id: propertyId,
         code,
-        floor: values.floor.toUpperCase(),
         room_number: values.room_number,
         base_rent: values.base_rent,
         status: editRoom?.status === 'occupied' ? 'occupied' : values.status,
@@ -165,39 +158,21 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
         <Form {...form}>
           <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4 py-1">
 
-            {/* Floor + Room Number side-by-side */}
-            <div className="grid grid-cols-2 gap-3">
-              <FormField control={form.control} name="floor" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white/60">Floor</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. A"
-                      maxLength={5}
-                      className="bg-white/5 border-white/10 text-white uppercase placeholder:text-white/20 focus:border-violet-500/60"
-                      {...field}
-                      onChange={e => field.onChange(e.target.value.toUpperCase())}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={form.control} name="room_number" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white/60">Room No.</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. 1"
-                      maxLength={10}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
+            {/* Room Number */}
+            <FormField control={form.control} name="room_number" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/60">Room No.</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="e.g. R1, 1, 2A"
+                    maxLength={10}
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
             {/* Code preview */}
             <div className="rounded-lg border border-white/8 bg-white/[0.03] px-4 py-2.5 flex items-center justify-between">
@@ -205,10 +180,10 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
               <span className="text-sm font-bold text-violet-300 tracking-wide">{codePreview}</span>
             </div>
 
-            {/* Base rent */}
+            {/* Rent amount per month */}
             <FormField control={form.control} name="base_rent" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white/60">Base Rent (RM)</FormLabel>
+                <FormLabel className="text-white/60">Rent Amount Per Month (RM)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -575,12 +550,7 @@ export function PropertyRoomMatrixPage() {
     return () => { supabase.removeChannel(channel) }
   }, [id, queryClient])
 
-  // Group by floor
-  const floorGroups = rooms?.reduce<Record<string, RoomBillingStatus[]>>((acc, room) => {
-    if (!acc[room.floor]) acc[room.floor] = []
-    acc[room.floor].push(room)
-    return acc
-  }, {}) ?? {}
+
 
   const counts = rooms?.reduce((acc, r) => {
     acc[r.billing_status] = (acc[r.billing_status] ?? 0) + 1
@@ -593,12 +563,14 @@ export function PropertyRoomMatrixPage() {
   function openAddRoom() { setEditRoom(null); setRoomDialogOpen(true) }
   function openEditRoom(room: RoomBillingStatus) {
     // Reconstruct a Room object from RoomBillingStatus for the edit dialog
+    // room_number is everything after the leading "houseNum-" prefix
+    const parts = room.room_code.split('-')
+    const roomNum = parts.length > 1 ? parts.slice(1).join('-') : room.room_code
     setEditRoom({
       id: room.room_id,
       property_id: room.property_id ?? id!,
       code: room.room_code,
-      floor: room.floor,
-      room_number: room.room_code.split('-')[2] ?? '',
+      room_number: roomNum,
       base_rent: room.base_rent,
       status: room.room_status,
       notes: null,
@@ -661,32 +633,21 @@ export function PropertyRoomMatrixPage() {
             {isAdmin() ? 'Click "Add Room" to set up rooms for this property.' : 'No rooms have been configured.'}
           </p>
           {isAdmin() && (
-            <Button onClick={openAddRoom} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white">
+            <Button onClick={openAddRoom} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
               <Plus className="mr-2 h-4 w-4" /> Add First Room
             </Button>
           )}
         </Card>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(floorGroups).sort().map(([floor, floorRooms]) => (
-            <div key={floor}>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xs font-semibold text-white/30 uppercase tracking-wider">Floor {floor}</span>
-                <div className="flex-1 h-px bg-white/8" />
-                <span className="text-xs text-white/20">{floorRooms.length} rooms</span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                {floorRooms.map(room => (
-                  <RoomCard
-                    key={room.room_id}
-                    room={room}
-                    isAdmin={isAdmin()}
-                    onPay={() => setPaymentRoom(room)}
-                    onEdit={() => openEditRoom(room)}
-                  />
-                ))}
-              </div>
-            </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+          {rooms!.map(room => (
+            <RoomCard
+              key={room.room_id}
+              room={room}
+              isAdmin={isAdmin()}
+              onPay={() => setPaymentRoom(room)}
+              onEdit={() => openEditRoom(room)}
+            />
           ))}
         </div>
       )}

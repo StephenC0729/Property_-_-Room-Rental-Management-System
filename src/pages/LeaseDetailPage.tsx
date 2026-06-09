@@ -50,7 +50,7 @@ function useLeaseDetail(id: string) {
           *,
           tenants ( * ),
           rooms (
-            id, code, floor, room_number, base_rent, status,
+            id, code, room_number, base_rent, status,
             properties ( id, name, address )
           )
         `)
@@ -373,7 +373,7 @@ export function LeaseDetailPage() {
               <p className="text-sm font-semibold text-white group-hover:text-violet-300 transition-colors">
                 {lease.rooms?.properties?.name ?? '—'} · Room {lease.rooms?.code ?? '—'}
               </p>
-              <p className="text-xs text-white/35 mt-1">Floor {lease.rooms?.floor} · No. {lease.rooms?.room_number}</p>
+              <p className="text-xs text-white/35 mt-1">Room No. {lease.rooms?.room_number}</p>
               <p className="text-xs text-white/35 mt-0.5">Base rent: {formatRinggit(lease.rooms?.base_rent ?? 0)}</p>
               <p className="text-xs text-violet-400 mt-2 group-hover:text-violet-300 transition-colors">
                 View room matrix →

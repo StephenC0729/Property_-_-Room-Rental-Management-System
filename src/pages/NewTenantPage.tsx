@@ -17,10 +17,8 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDes
 
 const tenantSchema = z.object({
   full_name:          z.string().min(2, 'Full name is required'),
-  nric_passport:      z.string().min(5, 'NRIC/Passport number is required'),
-  phone:              z.string()
-                       .min(8, 'Phone number is required')
-                       .regex(/^\+?[0-9\s\-()]{8,20}$/, 'Enter a valid phone number'),
+  nric_passport:      z.string().optional(),
+  phone:              z.string().refine(v => !v || /^\+?[0-9\s\-()]{8,20}$/.test(v), 'Enter a valid phone number').optional(),
   emergency_name:     z.string().optional(),
   emergency_relation: z.string().optional(),
   emergency_phone:    z.string().optional(),
@@ -60,8 +58,8 @@ export function NewTenantPage() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase.from('tenants').insert({
         full_name:          values.full_name.trim(),
-        nric_passport:      values.nric_passport.trim(),
-        phone:              values.phone.trim(),
+        nric_passport:      values.nric_passport?.trim() || null,
+        phone:              values.phone?.trim() || null,
         emergency_name:     values.emergency_name?.trim() || null,
         emergency_relation: values.emergency_relation?.trim() || null,
         emergency_phone:    values.emergency_phone?.trim() || null,
@@ -127,7 +125,7 @@ export function NewTenantPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="nric_passport" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">NRIC / Passport No. <span className="text-red-400">*</span></FormLabel>
+                      <FormLabel className="text-white/60">NRIC / Passport No. <span className="text-white/25">(optional)</span></FormLabel>
                       <FormControl>
                         <div className="relative">
                           <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
@@ -142,7 +140,7 @@ export function NewTenantPage() {
 
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">Phone Number <span className="text-red-400">*</span></FormLabel>
+                      <FormLabel className="text-white/60">Phone Number <span className="text-white/25">(optional)</span></FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />

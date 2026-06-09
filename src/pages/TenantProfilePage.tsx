@@ -37,8 +37,8 @@ interface TenantDetail extends Tenant {
 
 const editSchema = z.object({
   full_name:          z.string().min(2, 'Full name is required'),
-  nric_passport:      z.string().min(5, 'Required'),
-  phone:              z.string().min(8, 'Required').regex(/^\+?[0-9\s\-()]{8,20}$/, 'Invalid phone'),
+  nric_passport:      z.string().optional(),
+  phone:              z.string().refine(v => !v || /^\+?[0-9\s\-()]{8,20}$/.test(v), 'Invalid phone').optional(),
   emergency_name:     z.string().optional(),
   emergency_relation: z.string().optional(),
   emergency_phone:    z.string().optional(),
@@ -60,7 +60,7 @@ function useTenantDetail(id: string) {
             id, status, monthly_rent, due_day,
             move_in_date, expiry_date, security_deposit, utility_deposit, notes, created_at,
             rooms (
-              id, code, floor, room_number, base_rent, status,
+              id, code, room_number, base_rent, status,
               property_id,
               properties ( name )
             )
@@ -85,8 +85,8 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
     resolver: zodResolver(editSchema),
     values: {
       full_name:          tenant.full_name,
-      nric_passport:      tenant.nric_passport,
-      phone:              tenant.phone,
+      nric_passport:      tenant.nric_passport ?? '',
+      phone:              tenant.phone ?? '',
       emergency_name:     tenant.emergency_name ?? '',
       emergency_relation: tenant.emergency_relation ?? '',
       emergency_phone:    tenant.emergency_phone ?? '',
@@ -98,8 +98,8 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
     mutationFn: async (values: EditFormValues) => {
       const { error } = await supabase.from('tenants').update({
         full_name:          values.full_name.trim(),
-        nric_passport:      values.nric_passport.trim(),
-        phone:              values.phone.trim(),
+        nric_passport:      values.nric_passport?.trim() || null,
+        phone:              values.phone?.trim() || null,
         emergency_name:     values.emergency_name?.trim() || null,
         emergency_relation: values.emergency_relation?.trim() || null,
         emergency_phone:    values.emergency_phone?.trim() || null,
@@ -132,7 +132,7 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
         <div className="grid sm:grid-cols-2 gap-3">
           <FormField control={form.control} name="nric_passport" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">NRIC / Passport</FormLabel>
+              <FormLabel className="text-white/50 text-xs">NRIC / Passport <span className="text-white/30">(optional)</span></FormLabel>
               <FormControl>
                 <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
@@ -141,7 +141,7 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
           )} />
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">Phone</FormLabel>
+              <FormLabel className="text-white/50 text-xs">Phone <span className="text-white/30">(optional)</span></FormLabel>
               <FormControl>
                 <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
@@ -420,7 +420,7 @@ export function TenantProfilePage() {
               <FileText className="mx-auto mb-3 h-8 w-8 text-white/15" />
               <p className="text-sm text-white/30">No leases yet.</p>
               {isAdmin() && (
-                <Button asChild size="sm" className="mt-4 bg-violet-600 hover:bg-violet-500 text-white">
+                <Button asChild size="sm" className="mt-4 bg-violet-600 hover:bg-violet-500 text-white self-center">
                   <Link to="/leases/new">Create First Lease</Link>
                 </Button>
               )}

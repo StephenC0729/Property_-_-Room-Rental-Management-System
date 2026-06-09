@@ -65,14 +65,14 @@ function TenantRow({ tenant }: { tenant: TenantWithLease }) {
           <p className="text-sm font-semibold text-white truncate">{tenant.full_name}</p>
           <p className="text-xs text-white/35 flex items-center gap-1 mt-0.5">
             <CreditCard className="h-3 w-3 shrink-0" />
-            <span className="truncate">{tenant.nric_passport}</span>
+            <span className="truncate">{tenant.nric_passport ?? '—'}</span>
           </p>
         </div>
 
         {/* Phone */}
         <div className="hidden sm:flex items-center gap-1 text-xs text-white/35 min-w-0">
           <Phone className="h-3 w-3 shrink-0" />
-          <span className="truncate">{tenant.phone}</span>
+          <span className="truncate">{tenant.phone ?? '—'}</span>
         </div>
 
         {/* Room badge */}
@@ -103,8 +103,8 @@ export function TenantsPage() {
     const q = search.toLowerCase()
     return (
       t.full_name.toLowerCase().includes(q) ||
-      t.nric_passport.toLowerCase().includes(q) ||
-      t.phone.includes(q)
+      (t.nric_passport && t.nric_passport.toLowerCase().includes(q)) ||
+      (t.phone && t.phone.includes(q))
     )
   }) ?? []
 
@@ -159,7 +159,7 @@ export function TenantsPage() {
             <>
               <h3 className="text-base font-semibold text-white/40">No tenants yet</h3>
               <p className="mt-1 text-sm text-white/25">Click "Add Tenant" to register your first tenant.</p>
-              <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white">
+              <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
                 <Link to="/tenants/new"><Plus className="mr-2 h-4 w-4" /> Add First Tenant</Link>
               </Button>
             </>
