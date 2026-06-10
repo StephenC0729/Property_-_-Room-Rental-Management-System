@@ -112,7 +112,7 @@ export function NewTenantPage() {
               <div className="space-y-4">
                 <FormField control={form.control} name="full_name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60">Full Name <span className="text-red-400">*</span></FormLabel>
+                    <FormLabel className="text-white">Full Name <span className="text-red-400">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="As per NRIC / passport"
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"

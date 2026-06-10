@@ -370,11 +370,6 @@ export function PropertiesPage() {
           <p className="mt-1 text-sm text-white/25">
             {isAdmin() ? 'Click "Add Property" to set up your first house.' : 'Ask your admin to add properties.'}
           </p>
-          {isAdmin() && (
-            <Button onClick={openAdd} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
-              <Plus className="mr-2 h-4 w-4" /> Add First Property
-            </Button>
-          )}
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

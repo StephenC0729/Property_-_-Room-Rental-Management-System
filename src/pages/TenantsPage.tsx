@@ -159,9 +159,6 @@ export function TenantsPage() {
             <>
               <h3 className="text-base font-semibold text-white/40">No tenants yet</h3>
               <p className="mt-1 text-sm text-white/25">Click "Add Tenant" to register your first tenant.</p>
-              <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
-                <Link to="/tenants/new"><Plus className="mr-2 h-4 w-4" /> Add First Tenant</Link>
-              </Button>
             </>
           )}
         </Card>

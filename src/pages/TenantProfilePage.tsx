@@ -209,7 +209,7 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
 
 function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
   const isActive = lease.status === 'active'
-  const isExpired = !isActive && isPast(new Date(lease.expiry_date))
+  const isExpired = !isActive && lease.expiry_date && isPast(new Date(lease.expiry_date))
   const room = lease.rooms
 
   const statusBadge = {
@@ -241,12 +241,12 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
         </div>
         <div>
           <p className="text-white/35">Move In</p>
-          <p className="font-semibold text-white">{format(new Date(lease.move_in_date), 'dd MMM yyyy')}</p>
+          <p className="font-semibold text-white">{lease.move_in_date ? format(new Date(lease.move_in_date), 'dd MMM yyyy') : '—'}</p>
         </div>
         <div>
           <p className="text-white/35">Expires</p>
           <p className={`font-semibold ${isExpired && isActive ? 'text-red-400' : 'text-white'}`}>
-            {format(new Date(lease.expiry_date), 'dd MMM yyyy')}
+            {lease.expiry_date ? format(new Date(lease.expiry_date), 'dd MMM yyyy') : '—'}
           </p>
         </div>
       </div>
@@ -419,11 +419,6 @@ export function TenantProfilePage() {
             <Card className="border-white/8 bg-white/[0.03] p-8 text-center">
               <FileText className="mx-auto mb-3 h-8 w-8 text-white/15" />
               <p className="text-sm text-white/30">No leases yet.</p>
-              {isAdmin() && (
-                <Button asChild size="sm" className="mt-4 bg-violet-600 hover:bg-violet-500 text-white self-center">
-                  <Link to="/leases/new">Create First Lease</Link>
-                </Button>
-              )}
             </Card>
           ) : (
             <div className="space-y-3">

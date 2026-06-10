@@ -92,13 +92,17 @@ CREATE TABLE IF NOT EXISTS public.payment_history (
   lease_id       uuid NOT NULL REFERENCES public.leases(id) ON DELETE RESTRICT,
   room_id        uuid NOT NULL REFERENCES public.rooms(id) ON DELETE RESTRICT,
   tenant_id      uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
-  amount         numeric(10,2) NOT NULL CHECK (amount > 0),
+  amount         numeric(10,2) NOT NULL CHECK (amount >= 0),
   payment_method text NOT NULL CHECK (payment_method IN ('cash', 'bank_transfer')),
   reference      text,                -- bank ref, cheque number, etc.
+  water_bill     numeric(10,2) DEFAULT 0 CHECK (water_bill >= 0),
+  electricity_bill numeric(10,2) DEFAULT 0 CHECK (electricity_bill >= 0),
+  aircond_bill   numeric(10,2) DEFAULT 0 CHECK (aircond_bill >= 0),
   billing_month  date NOT NULL,       -- always day 1: e.g. 2026-06-01
   paid_at        timestamptz DEFAULT now(),
   recorded_by    uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  notes          text
+  notes          text,
+  CONSTRAINT payment_history_total_positive_check CHECK (amount + COALESCE(water_bill, 0) + COALESCE(electricity_bill, 0) + COALESCE(aircond_bill, 0) > 0)
 );
 
 -- Index for fast billing month lookups (room matrix, reports)

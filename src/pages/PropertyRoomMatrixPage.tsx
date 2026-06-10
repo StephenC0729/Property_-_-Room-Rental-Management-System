@@ -264,8 +264,12 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
 
 const paymentSchema = z.object({
   payment_method: z.enum(['cash', 'bank_transfer']),
-  amount: z.coerce.number().positive('Amount must be greater than 0'),
+  payment_date: z.string().min(1, 'Payment date is required'),
+  amount: z.coerce.number().min(0, 'Amount must be 0 or greater'),
   reference: z.string().optional(),
+  water_bill: z.coerce.number().min(0).optional(),
+  electricity_bill: z.coerce.number().min(0).optional(),
+  aircond_bill: z.coerce.number().min(0).optional(),
 })
 type PaymentFormValues = z.infer<typeof paymentSchema>
 
@@ -279,6 +283,9 @@ interface PaymentModalProps {
 
 function PaymentModal({ room, open, onClose }: PaymentModalProps) {
   const queryClient = useQueryClient()
+  const { data: rooms } = useRoomMatrix(room?.property_id ?? '')
+  const currentRoom = rooms?.find(r => r.room_id === room?.room_id) ?? room
+
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
   const [lastPayment, setLastPayment] = useState<{ amount: number } | null>(null)
 
@@ -286,8 +293,12 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       payment_method: 'cash',
+      payment_date: format(new Date(), 'yyyy-MM-dd'),
       amount: room?.outstanding_balance ?? room?.monthly_rent ?? 0,
       reference: '',
+      water_bill: 0,
+      electricity_bill: 0,
+      aircond_bill: 0,
     },
   })
 
@@ -295,8 +306,12 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
     if (room) {
       form.reset({
         payment_method: 'cash',
+        payment_date: format(new Date(), 'yyyy-MM-dd'),
         amount: room.outstanding_balance > 0 ? room.outstanding_balance : (room.monthly_rent ?? 0),
         reference: '',
+        water_bill: 0,
+        electricity_bill: 0,
+        aircond_bill: 0,
       })
       setWhatsappUrl(null)
       setLastPayment(null)
@@ -306,7 +321,7 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
   const mutation = useMutation({
     mutationFn: async (values: PaymentFormValues) => {
       if (!room?.lease_id) throw new Error('No active lease for this room')
-      const billingMonth = getCurrentBillingMonth().toISOString().slice(0, 10)
+      const billingMonth = format(getCurrentBillingMonth(), 'yyyy-MM-dd')
 
       const leaseRes = await supabase.from('leases').select('tenant_id').eq('id', room.lease_id).single()
       if (leaseRes.error) throw leaseRes.error
@@ -317,7 +332,11 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         tenant_id: leaseRes.data.tenant_id,
         amount: values.amount,
         payment_method: values.payment_method,
+        payment_date: values.payment_date,
         reference: values.reference || null,
+        water_bill: values.water_bill || 0,
+        electricity_bill: values.electricity_bill || 0,
+        aircond_bill: values.aircond_bill || 0,
         billing_month: billingMonth,
       })
       if (error) throw error
@@ -335,22 +354,25 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success(`Payment of ${formatRinggit(amount)} recorded.`)
-      setLastPayment({ amount })
-      if (room?.tenant_phone) {
+      
+      if (currentRoom?.tenant_phone) {
+        setLastPayment({ amount })
         setWhatsappUrl(buildWhatsAppReceiptLink({
-          phone: room.tenant_phone,
-          tenantName: room.tenant_name ?? 'Tenant',
+          phone: currentRoom.tenant_phone,
+          tenantName: currentRoom.tenant_name ?? 'Tenant',
           amount,
-          roomCode: room.room_code,
+          roomCode: currentRoom.room_code,
           billingMonth: getCurrentBillingMonth(),
         }))
+      } else {
+        onClose()
       }
     },
     onError: (err: Error) => toast.error(err.message),
   })
 
-  if (!room) return null
-  const cfg = statusConfig[room.billing_status]
+  if (!currentRoom) return null
+  const cfg = statusConfig[currentRoom.billing_status]
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -358,7 +380,7 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <span className={`h-2.5 w-2.5 rounded-full ${cfg.dot}`} />
-            Room {room.room_code}
+            Room {currentRoom.room_code}
             <Badge className={`ml-1 text-xs border-current bg-current/10 ${cfg.textColor}`}>{cfg.label}</Badge>
           </DialogTitle>
         </DialogHeader>
@@ -367,21 +389,21 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         <div className="rounded-lg border border-white/8 bg-white/[0.03] p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-white/40">Tenant</span>
-            <span className="font-medium text-white">{room.tenant_name ?? '—'}</span>
+            <span className="font-medium text-white">{currentRoom.tenant_name ?? '—'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/40">Monthly Rent</span>
-            <span className="font-medium text-white">{room.monthly_rent ? formatRinggit(room.monthly_rent) : '—'}</span>
+            <span className="font-medium text-white">{currentRoom.monthly_rent ? formatRinggit(currentRoom.monthly_rent) : '—'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/40">Paid This Month</span>
-            <span className="font-medium text-emerald-400">{formatRinggit(room.total_paid)}</span>
+            <span className="font-medium text-emerald-400">{formatRinggit(currentRoom.total_paid)}</span>
           </div>
           <Separator className="bg-white/8" />
           <div className="flex justify-between">
             <span className="text-white/40">Outstanding</span>
-            <span className={`text-lg font-bold ${room.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-              {formatRinggit(room.outstanding_balance)}
+            <span className={`text-lg font-bold ${currentRoom.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {formatRinggit(currentRoom.outstanding_balance)}
             </span>
           </div>
         </div>
@@ -402,7 +424,7 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         )}
 
         {/* Payment form */}
-        {!whatsappUrl && room.billing_status !== 'vacant' && room.billing_status !== 'maintenance' && (
+        {!whatsappUrl && currentRoom.billing_status !== 'vacant' && currentRoom.billing_status !== 'maintenance' && (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4">
               <FormField control={form.control} name="payment_method" render={({ field }) => (
@@ -423,18 +445,33 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
                 </FormItem>
               )} />
 
-              <FormField control={form.control} name="amount" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white/60">Amount (RM)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" min="0.01"
-                      className="bg-white/5 border-white/10 text-white text-lg font-semibold h-12 focus:border-violet-500/60
-                                 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                      {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="payment_date" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/60">Payment Date</FormLabel>
+                    <FormControl>
+                      <Input type="date"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer h-12"
+                        onClick={e => e.currentTarget.showPicker?.()}
+                        {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="amount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/60">Amount (RM)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0.01"
+                        className="bg-white/5 border-white/10 text-white text-lg font-semibold h-12 focus:border-violet-500/60
+                                   [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                        {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
 
               <FormField control={form.control} name="reference" render={({ field }) => (
                 <FormItem>
@@ -447,6 +484,39 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
                 </FormItem>
               )} />
 
+              <div className="grid grid-cols-3 gap-2">
+                <FormField control={form.control} name="water_bill" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/60 text-xs">Water Bill</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        {...field} />
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="electricity_bill" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/60 text-xs">Electric</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        {...field} />
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="aircond_bill" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/60 text-xs">Aircond</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        {...field} />
+                    </FormControl>
+                  </FormItem>
+                )} />
+              </div>
+
               <Button type="submit" disabled={mutation.isPending}
                 className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-violet-500/20">
                 {mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recording…</> : 'Record Payment'}
@@ -455,9 +525,9 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
           </Form>
         )}
 
-        {(room.billing_status === 'vacant' || room.billing_status === 'maintenance') && (
+        {(currentRoom.billing_status === 'vacant' || currentRoom.billing_status === 'maintenance') && (
           <p className="text-center text-sm text-white/30 py-2">
-            {room.billing_status === 'vacant' ? 'This room has no active tenant.' : 'This room is under maintenance.'}
+            {currentRoom.billing_status === 'vacant' ? 'This room has no active tenant.' : 'This room is under maintenance.'}
           </p>
         )}
       </DialogContent>
@@ -632,11 +702,6 @@ export function PropertyRoomMatrixPage() {
           <p className="mt-1 text-sm text-white/25">
             {isAdmin() ? 'Click "Add Room" to set up rooms for this property.' : 'No rooms have been configured.'}
           </p>
-          {isAdmin() && (
-            <Button onClick={openAddRoom} className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
-              <Plus className="mr-2 h-4 w-4" /> Add First Room
-            </Button>
-          )}
         </Card>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">

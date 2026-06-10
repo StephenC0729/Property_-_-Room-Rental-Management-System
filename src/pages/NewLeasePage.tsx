@@ -27,12 +27,15 @@ const leaseSchema = z.object({
   room_id:           z.string().uuid('Please select a room'),
   monthly_rent:      z.coerce.number().positive('Monthly rent must be greater than 0'),
   due_day:           z.coerce.number().int().min(1).max(28),
-  move_in_date:      z.string().min(1, 'Move-in date is required'),
-  expiry_date:       z.string().min(1, 'Expiry date is required'),
+  move_in_date:      z.string().optional(),
+  expiry_date:       z.string().optional(),
   security_deposit:  z.coerce.number().min(0),
   utility_deposit:   z.coerce.number().min(0),
   notes:             z.string().optional(),
-}).refine(d => new Date(d.expiry_date) > new Date(d.move_in_date), {
+}).refine(d => {
+  if (!d.move_in_date || !d.expiry_date) return true;
+  return new Date(d.expiry_date) > new Date(d.move_in_date);
+}, {
   message: 'Expiry must be after move-in date',
   path: ['expiry_date'],
 })
@@ -243,7 +246,7 @@ export function NewLeasePage() {
       room_id: '',
       monthly_rent: 0,
       due_day: 1,
-      move_in_date: new Date().toISOString().slice(0, 10),
+      move_in_date: '',
       expiry_date: '',
       security_deposit: 0,
       utility_deposit: 0,
@@ -261,8 +264,8 @@ export function NewLeasePage() {
           room_id:          values.room_id,
           monthly_rent:     values.monthly_rent,
           due_day:          values.due_day,
-          move_in_date:     values.move_in_date,
-          expiry_date:      values.expiry_date,
+          move_in_date:     values.move_in_date || null,
+          expiry_date:      values.expiry_date || null,
           security_deposit: values.security_deposit,
           utility_deposit:  values.utility_deposit,
           notes:            values.notes?.trim() || null,
@@ -401,11 +404,12 @@ export function NewLeasePage() {
                 <FormField control={form.control} name="move_in_date" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white/50 text-xs flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" /> Move-in Date *
+                      <CalendarDays className="h-3.5 w-3.5" /> Move-in Date (Optional)
                     </FormLabel>
                     <FormControl>
                       <Input type="date"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer"
+                        onClick={e => e.currentTarget.showPicker?.()}
                         {...field} />
                     </FormControl>
                     <FormMessage />
@@ -415,11 +419,12 @@ export function NewLeasePage() {
                 <FormField control={form.control} name="expiry_date" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white/50 text-xs flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" /> Lease Expiry Date *
+                      <CalendarDays className="h-3.5 w-3.5" /> Lease Expiry Date (Optional)
                     </FormLabel>
                     <FormControl>
                       <Input type="date"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60"
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer"
+                        onClick={e => e.currentTarget.showPicker?.()}
                         {...field} />
                     </FormControl>
                     <FormMessage />

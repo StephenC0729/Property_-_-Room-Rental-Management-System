@@ -60,9 +60,9 @@ function useLeases() {
 function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
   const status = lease.status as LeaseStatus
   const badge = STATUS_BADGE[status] ?? STATUS_BADGE.expired
-  const expiryDate = new Date(lease.expiry_date)
-  const daysToExpiry = differenceInDays(expiryDate, new Date())
-  const expiringWarning = status === 'active' && daysToExpiry >= 0 && daysToExpiry <= 30
+  const expiryDate = lease.expiry_date ? new Date(lease.expiry_date) : null
+  const daysToExpiry = expiryDate ? differenceInDays(expiryDate, new Date()) : null
+  const expiringWarning = status === 'active' && daysToExpiry !== null && daysToExpiry >= 0 && daysToExpiry <= 30
   const initials = lease.tenants?.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() ?? '?'
 
   return (
@@ -93,7 +93,7 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
         <div className="hidden md:block text-xs text-white/35 shrink-0">
           <div className="flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />
-            {format(expiryDate, 'dd MMM yyyy')}
+            {expiryDate ? format(expiryDate, 'dd MMM yyyy') : '—'}
           </div>
           {expiringWarning && (
             <span className="text-yellow-400 font-medium">Expires in {daysToExpiry}d</span>
@@ -183,11 +183,6 @@ export function LeasesPage() {
               ? 'Create a new lease to bind a tenant to a room.'
               : `No ${activeTab} leases on record.`}
           </p>
-          {(activeTab === 'all' || activeTab === 'active') && (
-            <Button asChild className="mt-6 bg-violet-600 hover:bg-violet-500 text-white self-center">
-              <Link to="/leases/new"><Plus className="mr-2 h-4 w-4" /> New Lease</Link>
-            </Button>
-          )}
         </Card>
       ) : (
         <div className="space-y-1.5">

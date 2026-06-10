@@ -77,8 +77,8 @@ export interface Lease {
   tenant_id: string
   monthly_rent: number
   due_day: number
-  move_in_date: string
-  expiry_date: string
+  move_in_date?: string | null
+  expiry_date?: string | null
   status: LeaseStatus
   security_deposit: number
   utility_deposit: number
@@ -100,6 +100,8 @@ export interface Payment {
   room_id: string
   tenant_id: string
   amount: number
+  payment_date: string
+  paid_at: string
   payment_method: PaymentMethod
   reference: string | null
   billing_month: string  // ISO date, always day 1: e.g. "2026-06-01"

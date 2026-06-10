@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import {
   ArrowLeft, Home, User, CreditCard, CalendarDays, Wallet,
-  AlertTriangle, CheckCircle2, FileText, Loader2, Phone,
+  AlertTriangle, CheckCircle2, FileText, Loader2, Phone, Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, isPast, differenceInDays } from 'date-fns'
@@ -16,12 +19,31 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import type { Lease, Tenant, Room, Property } from '@/types'
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types & Schema ────────────────────────────────────────────────────────────
+
+const editLeaseSchema = z.object({
+  monthly_rent:      z.coerce.number().min(0, 'Monthly rent must be 0 or greater'),
+  due_day:           z.coerce.number().int().min(1).max(28),
+  move_in_date:      z.string().optional(),
+  expiry_date:       z.string().optional(),
+  security_deposit:  z.coerce.number().min(0),
+  utility_deposit:   z.coerce.number().min(0),
+  notes:             z.string().optional(),
+}).refine(d => {
+  if (!d.move_in_date || !d.expiry_date) return true;
+  return new Date(d.expiry_date) > new Date(d.move_in_date);
+}, {
+  message: 'Expiry must be after move-in date',
+  path: ['expiry_date'],
+})
+type EditLeaseFormValues = z.infer<typeof editLeaseSchema>
 
 interface PaymentRecord {
   id: string
@@ -30,7 +52,7 @@ interface PaymentRecord {
   reference: string | null
   billing_month: string
   payment_date: string
-  created_at: string
+  paid_at: string
 }
 
 interface LeaseDetail extends Lease {
@@ -103,6 +125,17 @@ function MethodBadge({ method }: { method: 'cash' | 'bank_transfer' }) {
 }
 
 function StatusInfo({ lease }: { lease: LeaseDetail }) {
+  if (!lease.expiry_date) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3">
+        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+        <p className="text-sm text-emerald-300">
+          Active lease · <strong>No expiry date</strong>
+        </p>
+      </div>
+    )
+  }
+
   const expiryDate = new Date(lease.expiry_date)
   const daysLeft = differenceInDays(expiryDate, new Date())
   const isExpired = isPast(expiryDate)
@@ -225,6 +258,155 @@ function TerminateDialog({
   )
 }
 
+// ─── Edit Lease Dialog ────────────────────────────────────────────────────────
+
+function EditLeaseDialog({
+  open, onClose, lease,
+}: {
+  open: boolean
+  onClose: () => void
+  lease: LeaseDetail
+}) {
+  const queryClient = useQueryClient()
+
+  const form = useForm<EditLeaseFormValues>({
+    resolver: zodResolver(editLeaseSchema),
+    values: {
+      monthly_rent: lease.monthly_rent,
+      due_day: lease.due_day,
+      move_in_date: lease.move_in_date || '',
+      expiry_date: lease.expiry_date || '',
+      security_deposit: lease.security_deposit,
+      utility_deposit: lease.utility_deposit,
+      notes: lease.notes || '',
+    },
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (values: EditLeaseFormValues) => {
+      const payload = {
+        ...values,
+        move_in_date: values.move_in_date || null,
+        expiry_date: values.expiry_date || null,
+        notes: values.notes?.trim() || null,
+      }
+      const { error } = await supabase
+        .from('leases')
+        .update(payload)
+        .eq('id', lease.id)
+      if (error) throw error
+
+      await logAudit({
+        action: 'LEASE_UPDATED',
+        target_type: 'lease',
+        target_id: lease.id,
+        metadata: payload,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leases'] })
+      queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
+      toast.success('Lease updated successfully.')
+      onClose()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-white">Edit Lease Terms</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="monthly_rent" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Monthly Rent (RM)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="due_day" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Due Day (1-28)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min="1" max="28" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="move_in_date" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Move-in Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="expiry_date" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Expiry Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="security_deposit" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Security Deposit</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="utility_deposit" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/60">Utility Deposit</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/60">Notes</FormLabel>
+                <FormControl>
+                  <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={onClose} className="text-white/40 hover:text-white">Cancel</Button>
+              <Button type="submit" disabled={mutation.isPending} className="bg-violet-600 hover:bg-violet-500 text-white">
+                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export function LeaseDetailPage() {
@@ -232,6 +414,7 @@ export function LeaseDetailPage() {
   const navigate = useNavigate()
   const { isAdmin } = useAuthStore()
   const [showTerminate, setShowTerminate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
 
   const { data: lease, isLoading } = useLeaseDetail(id!)
   const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(id!)
@@ -297,14 +480,24 @@ export function LeaseDetailPage() {
             </p>
           </div>
           {isAdmin() && lease.status === 'active' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowTerminate(true)}
-              className="border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-            >
-              <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Terminate
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEdit(true)}
+                className="border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+              >
+                <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTerminate(true)}
+                className="border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              >
+                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Terminate
+              </Button>
+            </div>
           )}
         </div>
 
@@ -327,10 +520,10 @@ export function LeaseDetailPage() {
             <CalendarDays className="h-4 w-4 text-violet-400" /> Dates
           </h2>
           <InfoGrid items={[
-            { label: 'Move-in Date',  value: format(new Date(lease.move_in_date), 'dd MMM yyyy') },
-            { label: 'Expiry Date',   value: format(new Date(lease.expiry_date), 'dd MMM yyyy') },
+            { label: 'Move-in Date',  value: lease.move_in_date ? format(new Date(lease.move_in_date), 'dd MMM yyyy') : '—' },
+            { label: 'Expiry Date',   value: lease.expiry_date ? format(new Date(lease.expiry_date), 'dd MMM yyyy') : '—' },
             { label: 'Created',       value: format(new Date(lease.created_at), 'dd MMM yyyy') },
-            { label: 'Duration',      value: `${differenceInDays(new Date(lease.expiry_date), new Date(lease.move_in_date))} days` },
+            { label: 'Duration',      value: lease.move_in_date && lease.expiry_date ? `${differenceInDays(new Date(lease.expiry_date), new Date(lease.move_in_date))} days` : '—' },
           ]} />
           {lease.notes && (
             <>
@@ -429,7 +622,7 @@ export function LeaseDetailPage() {
                       {format(new Date(payment.billing_month), 'MMMM yyyy')}
                     </p>
                     <p className="text-xs text-white/30 mt-0.5">
-                      Paid {format(new Date(payment.payment_date ?? payment.created_at), 'dd MMM yyyy')}
+                      Paid {format(new Date(payment.payment_date ?? payment.paid_at), 'dd MMM yyyy')}
                     </p>
                   </div>
                   <div className="hidden sm:block">
@@ -460,6 +653,12 @@ export function LeaseDetailPage() {
         onClose={() => setShowTerminate(false)}
         lease={lease}
         onDone={() => navigate('/leases')}
+      />
+
+      <EditLeaseDialog
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        lease={lease}
       />
     </div>
   )
