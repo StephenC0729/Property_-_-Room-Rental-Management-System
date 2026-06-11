@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Home, User, CreditCard, CalendarDays, Wallet,
@@ -20,13 +19,13 @@ import { MethodBadge } from '@/components/leases/MethodBadge'
 import { StatusInfo } from '@/components/leases/StatusInfo'
 import { TerminateDialog } from '@/components/leases/TerminateDialog'
 import { EditLeaseDialog } from '@/components/leases/EditLeaseDialog'
+import { useUIStore } from '@/store/uiStore'
 
 export function LeaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { isAdmin } = useAuthStore()
-  const [showTerminate, setShowTerminate] = useState(false)
-  const [showEdit, setShowEdit] = useState(false)
+  const { activeModal, openModal, closeModal } = useUIStore()
 
   const { data: lease, isLoading } = useLeaseDetail(id!)
   const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(id!)
@@ -93,19 +92,17 @@ export function LeaseDetailPage() {
           </div>
           {isAdmin() && lease.status === 'active' && (
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowEdit(true)}
-                className="border border-border text-white/70 hover:bg-white/10 hover:text-foreground"
+              <Button 
+                variant="outline" 
+                onClick={() => openModal('edit-lease')}
+                className="bg-card hover:bg-muted text-foreground border-border"
               >
                 <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTerminate(true)}
-                className="border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              <Button 
+                variant="destructive" 
+                onClick={() => openModal('terminate-lease')}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-0"
               >
                 <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Terminate
               </Button>
@@ -259,19 +256,22 @@ export function LeaseDetailPage() {
         </div>
       </div>
 
-      {/* Terminate Dialog */}
-      <TerminateDialog
-        open={showTerminate}
-        onClose={() => setShowTerminate(false)}
-        lease={lease}
-        onDone={() => navigate('/leases')}
-      />
+      {lease && (
+        <TerminateDialog
+          lease={lease}
+          open={activeModal === 'terminate-lease'}
+          onClose={closeModal}
+          onDone={() => navigate('/leases')}
+        />
+      )}
 
-      <EditLeaseDialog
-        open={showEdit}
-        onClose={() => setShowEdit(false)}
-        lease={lease}
-      />
+      {lease && (
+        <EditLeaseDialog
+          lease={lease}
+          open={activeModal === 'edit-lease'}
+          onClose={closeModal}
+        />
+      )}
     </div>
   )
 }

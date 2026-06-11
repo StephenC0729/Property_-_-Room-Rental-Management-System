@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Home, Plus } from 'lucide-react'
@@ -9,11 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Room, RoomBillingStatus, BillingStatus } from '@/types'
+import type { RoomBillingStatus, BillingStatus } from '@/types'
 import { useProperty } from '@/hooks/useProperty'
 import { useRoomMatrix } from '@/hooks/useRoomMatrix'
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription'
 import { statusConfig } from '@/utils/statusConfig'
+import { useUIStore } from '@/store/uiStore'
 import { RoomDialog } from '@/components/rooms/RoomDialog'
 import { PaymentModal } from '@/components/rooms/PaymentModal'
 import { RoomCard } from '@/components/rooms/RoomCard'
@@ -22,10 +22,7 @@ export function PropertyRoomMatrixPage() {
   const { id } = useParams<{ id: string }>()
   const { isAdmin } = useAuthStore()
   const queryClient = useQueryClient()
-
-  const [paymentRoom, setPaymentRoom] = useState<RoomBillingStatus | null>(null)
-  const [roomDialogOpen, setRoomDialogOpen] = useState(false)
-  const [editRoom, setEditRoom] = useState<Room | null>(null)
+  const { activeModal, modalData, openModal, closeModal } = useUIStore()
 
   const { data: property, isLoading: propLoading } = useProperty(id!)
   const { data: rooms, isLoading: roomsLoading } = useRoomMatrix(id!)
@@ -55,11 +52,11 @@ export function PropertyRoomMatrixPage() {
   const billingMonth = format(getCurrentBillingMonth(), 'MMMM yyyy')
   const isLoading = propLoading || roomsLoading
 
-  function openAddRoom() { setEditRoom(null); setRoomDialogOpen(true) }
+  function openAddRoom() { openModal('add-room') }
   function openEditRoom(room: RoomBillingStatus) {
     const parts = room.room_code.split('-')
     const roomNum = parts.length > 1 ? parts.slice(1).join('-') : room.room_code
-    setEditRoom({
+    openModal('edit-room', {
       id: room.room_id,
       property_id: id!,
       code: room.room_code,
@@ -69,7 +66,6 @@ export function PropertyRoomMatrixPage() {
       notes: null,
       created_at: '',
     })
-    setRoomDialogOpen(true)
   }
 
   return (
@@ -133,7 +129,7 @@ export function PropertyRoomMatrixPage() {
               key={room.room_id}
               room={room}
               isAdmin={isAdmin()}
-              onPay={() => setPaymentRoom(room)}
+              onPay={() => openModal('payment', room)}
               onEdit={() => openEditRoom(room)}
             />
           ))}
@@ -155,15 +151,17 @@ export function PropertyRoomMatrixPage() {
       {/* Dialogs */}
       {property && (
         <RoomDialog
-          open={roomDialogOpen}
-          onClose={() => { setRoomDialogOpen(false); setEditRoom(null) }}
+          open={activeModal === 'edit-room' || activeModal === 'add-room'}
+          onClose={closeModal}
           propertyId={id!}
           propertyName={property.name}
-          editRoom={editRoom}
+          editRoom={activeModal === 'edit-room' ? modalData : null}
         />
       )}
 
-      {paymentRoom && <PaymentModal open={!!paymentRoom} onClose={() => setPaymentRoom(null)} room={paymentRoom!} />}
+      {activeModal === 'payment' && modalData && (
+        <PaymentModal open={true} onClose={closeModal} room={modalData} />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { propertySchema, type PropertyFormValues } from '@/schemas/property'
 import { useAuthStore } from '@/store/authStore'
+import { useUIStore } from '@/store/uiStore'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -303,15 +304,14 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
 
 export function PropertiesPage() {
   const { isAdmin } = useAuthStore()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editTarget, setEditTarget] = useState<Property | null>(null)
+  const { activeModal, modalData, openModal, closeModal } = useUIStore()
 
   const { data: properties, isLoading } = useProperties()
   const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
 
-  function openAdd() { setEditTarget(null); setDialogOpen(true) }
-  function openEdit(p: Property) { setEditTarget(p); setDialogOpen(true) }
-  function closeDialog() { setDialogOpen(false); setEditTarget(null) }
+  function openAdd() { openModal('add-property') }
+  function openEdit(p: Property) { openModal('edit-property', p) }
+  function closeDialog() { closeModal() }
 
   const totalOverdue = properties?.reduce((sum, p) => {
     const s = roomStats?.[p.id]
@@ -388,7 +388,11 @@ export function PropertiesPage() {
         </div>
       )}
 
-      <PropertyDialog open={dialogOpen} onClose={closeDialog} editProperty={editTarget} />
+      <PropertyDialog 
+        open={activeModal === 'add-property' || activeModal === 'edit-property'} 
+        onClose={closeDialog} 
+        editProperty={activeModal === 'edit-property' ? modalData : null} 
+      />
     </div>
   )
 }
