@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Plus, ChevronRight, Home, User, CalendarDays } from 'lucide-react'
-import { format, isPast, differenceInDays } from 'date-fns'
+import { FileText, Plus, ChevronRight, Home, CalendarDays } from 'lucide-react'
+import { format, differenceInDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit } from '@/utils/exportCsv'
 import { Button } from '@/components/ui/button'
@@ -122,7 +122,7 @@ export function LeasesPage() {
   const counts = leases?.reduce((acc, l) => {
     acc[l.status as LeaseStatus] = (acc[l.status as LeaseStatus] ?? 0) + 1
     return acc
-  }, {} as Record<LeaseStatus, number>) ?? {}
+  }, {} as Partial<Record<LeaseStatus, number>>) ?? {}
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
@@ -135,7 +135,7 @@ export function LeasesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Leases</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isLoading ? '—' : `${leases?.length ?? 0} total · ${counts.active ?? 0} active`}
+            {isLoading ? '—' : `${leases?.length ?? 0} total · ${(counts as Partial<Record<LeaseStatus, number>>).active ?? 0} active`}
           </p>
         </div>
         <Button asChild className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20">
@@ -158,11 +158,11 @@ export function LeasesPage() {
             }`}
           >
             {tab.label}
-            {tab.key !== 'all' && counts[tab.key as LeaseStatus] > 0 && (
+            {tab.key !== 'all' && ((counts as any)[tab.key] ?? 0) > 0 && (
               <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
                 activeTab === tab.key ? 'bg-white/20' : 'bg-white/10 text-muted-foreground/70'
               }`}>
-                {counts[tab.key as LeaseStatus]}
+                {(counts as any)[tab.key]}
               </span>
             )}
           </button>

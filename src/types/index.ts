@@ -34,7 +34,7 @@ export interface Room {
 
 // ─── Billing Status (derived, not stored) ────────────────────────────────────
 
-export type BillingStatus = 'paid' | 'overdue' | 'partial' | 'vacant' | 'maintenance'
+export type BillingStatus = 'paid' | 'overdue' | 'partial' | 'vacant' | 'maintenance' | 'upcoming'
 
 export interface RoomBillingStatus {
   room_id: string
@@ -105,7 +105,6 @@ export interface Payment {
   payment_method: PaymentMethod
   reference: string | null
   billing_month: string  // ISO date, always day 1: e.g. "2026-06-01"
-  paid_at: string
   recorded_by: string | null
   notes: string | null
   // Joined fields

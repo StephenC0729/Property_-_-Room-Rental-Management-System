@@ -6,12 +6,11 @@ import {
 } from 'lucide-react'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { exportToCsv, formatRinggit } from '@/utils/exportCsv'
-import { formatBillingMonth } from '@/utils/whatsapp'
-import { Button } from '@/components/ui/button'
+import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import type { Property, RoomBillingStatus } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -119,7 +118,7 @@ function useHistoricalReport(billingMonth: string) {
         rooms?: RoomRef | null
       }
 
-      return (leases as LeaseRef[]).map(l => {
+      return (leases as unknown as LeaseRef[]).map(l => {
         const paid    = paidMap[l.id] ?? 0
         const rent    = l.monthly_rent
         const balance = Math.max(0, rent - paid)

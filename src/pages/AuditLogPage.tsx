@@ -148,7 +148,7 @@ function useAuditLog(dateRange: DateRange, actionFilter: AuditAction | 'all') {
 
 // ─── Audit Entry Row ───────────────────────────────────────────────────────────
 
-function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: boolean; isLast: boolean }) {
+function AuditRow({ entry, isLast }: { entry: AuditEntry; isLast: boolean }) {
   const cfg = ACTION_CONFIG[entry.action] ?? {
     label: entry.action, icon: Shield,
     color: 'text-muted-foreground', bgColor: 'bg-muted', dot: 'bg-white/20',
@@ -394,7 +394,6 @@ export function AuditLogPage() {
                   <AuditRow
                     key={entry.id}
                     entry={entry}
-                    isFirst={idx === 0}
                     isLast={idx === group.entries.length - 1}
                   />
                 ))}

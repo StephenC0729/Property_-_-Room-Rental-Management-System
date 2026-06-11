@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -14,7 +14,6 @@ import { logAudit } from '@/lib/audit'
 import { formatRinggit } from '@/utils/exportCsv'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
@@ -240,7 +239,7 @@ export function NewLeasePage() {
   const prefillTenantId = searchParams.get('tenant')
 
   const form = useForm<LeaseFormValues>({
-    resolver: zodResolver(leaseSchema),
+    resolver: zodResolver(leaseSchema) as any,
     defaultValues: {
       tenant_id: prefillTenantId ?? '',
       room_id: '',

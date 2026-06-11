@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  Users, Shield, UserX, Check, X, Loader2,
+  Users, Shield, UserX, Check, Loader2,
   Key, User, AlertTriangle, ChevronDown, Info,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -189,11 +189,11 @@ function MemberRow({ member, currentUserId }: { member: UserProfile; currentUser
       <div className="shrink-0">
         {!isSelf ? (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-2 flex items-center gap-2 hover:bg-muted border border-transparent hover:border-border transition-colors">
+            <DropdownMenuTrigger>
+              <div className="h-8 px-2 flex items-center gap-2 hover:bg-muted border border-transparent hover:border-border transition-colors rounded-md text-sm font-medium text-muted-foreground/80 cursor-pointer">
                 <Badge className={`text-[10px] px-1.5 h-5 ${cfg.cls}`}>{cfg.label}</Badge>
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[160px]">
               {ROLES.map(r => (
@@ -387,9 +387,9 @@ export function SettingsPage() {
               <h2 className="text-sm font-semibold text-white/70">Team Members</h2>
             </div>
             <div className="flex gap-1.5">
-              {(Object.keys(roleCounts) as UserRole[]).map(role => (
+              {(Object.keys(roleCounts) as UserRole[]).map((role) => (
                 <Badge key={role} className={`text-xs ${ROLE_CONFIG[role].cls}`}>
-                  {roleCounts[role]} {ROLE_CONFIG[role].label}
+                  {(roleCounts as any)[role]} {ROLE_CONFIG[role].label}
                 </Badge>
               ))}
             </div>
