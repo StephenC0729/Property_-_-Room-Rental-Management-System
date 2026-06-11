@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/lib/AuthContext'
 import { RoleGate } from '@/components/layout/RoleGate'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { ThemeProvider } from '@/components/theme-provider'
 
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
@@ -33,12 +34,13 @@ const queryClient = new QueryClient({
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public */}
+    <ThemeProvider defaultTheme="light" storageKey="prms-theme">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public */}
               <Route path="/login" element={<LoginPage />} />
 
               {/* Protected — all authenticated users */}
@@ -96,5 +98,6 @@ export function App() {
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   )
 }

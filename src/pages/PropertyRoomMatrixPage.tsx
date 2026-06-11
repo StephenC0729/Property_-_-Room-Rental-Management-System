@@ -33,7 +33,7 @@ const statusConfig: Record<BillingStatus, {
   paid:        { label: 'Paid',        cardBg: 'bg-emerald-500/10', cardBorder: 'border-emerald-500/30', dot: 'bg-emerald-400',  textColor: 'text-emerald-400' },
   overdue:     { label: 'Overdue',     cardBg: 'bg-red-500/10',     cardBorder: 'border-red-500/30',     dot: 'bg-red-400',      textColor: 'text-red-400' },
   partial:     { label: 'Partial',     cardBg: 'bg-orange-500/10',  cardBorder: 'border-orange-500/30',  dot: 'bg-orange-400',   textColor: 'text-orange-400' },
-  vacant:      { label: 'Vacant',      cardBg: 'bg-white/[0.03]',   cardBorder: 'border-white/8',        dot: 'bg-white/25',     textColor: 'text-white/30' },
+  vacant:      { label: 'Vacant',      cardBg: 'bg-card',   cardBorder: 'border-border',        dot: 'bg-white/25',     textColor: 'text-muted-foreground/70' },
   maintenance: { label: 'Maintenance', cardBg: 'bg-yellow-500/10',  cardBorder: 'border-yellow-500/30',  dot: 'bg-yellow-400',   textColor: 'text-yellow-400' },
   upcoming:    { label: 'Upcoming',    cardBg: 'bg-blue-500/10',    cardBorder: 'border-blue-500/30',    dot: 'bg-blue-400',     textColor: 'text-blue-400' },
 }
@@ -148,9 +148,9 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-sm">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-white">
+          <DialogTitle className="text-foreground">
             {editRoom ? `Edit Room ${editRoom.code}` : 'Add New Room'}
           </DialogTitle>
         </DialogHeader>
@@ -161,12 +161,12 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
             {/* Room Number */}
             <FormField control={form.control} name="room_number" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white/60">Room No.</FormLabel>
+                <FormLabel className="text-muted-foreground">Room No.</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="e.g. R1, 1, 2A"
                     maxLength={10}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                     {...field}
                   />
                 </FormControl>
@@ -175,22 +175,22 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
             )} />
 
             {/* Code preview */}
-            <div className="rounded-lg border border-white/8 bg-white/[0.03] px-4 py-2.5 flex items-center justify-between">
-              <span className="text-xs text-white/35">Room Code Preview</span>
+            <div className="rounded-lg border border-border bg-card px-4 py-2.5 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground/70">Room Code Preview</span>
               <span className="text-sm font-bold text-violet-300 tracking-wide">{codePreview}</span>
             </div>
 
             {/* Rent amount per month */}
             <FormField control={form.control} name="base_rent" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white/60">Rent Amount Per Month (RM)</FormLabel>
+                <FormLabel className="text-muted-foreground">Rent Amount Per Month (RM)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder="e.g. 450"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60
                                [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                     {...field}
                   />
@@ -203,7 +203,7 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
             {(!editRoom || editRoom.status !== 'occupied') && (
               <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Initial Status</FormLabel>
+                  <FormLabel className="text-muted-foreground">Initial Status</FormLabel>
                   <div className="grid grid-cols-2 gap-2">
                     {(['vacant', 'maintenance'] as const).map(s => (
                       <button
@@ -213,9 +213,9 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
                         className={`rounded-lg border py-2.5 text-sm font-medium capitalize transition-all ${
                           field.value === s
                             ? s === 'vacant'
-                              ? 'border-white/30 bg-white/10 text-white'
+                              ? 'border-white/30 bg-white/10 text-foreground'
                               : 'border-yellow-500/40 bg-yellow-500/15 text-yellow-300'
-                            : 'border-white/8 bg-white/[0.03] text-white/30 hover:border-white/15'
+                            : 'border-border bg-card text-muted-foreground/70 hover:border-white/15'
                         }`}
                       >
                         {s === 'vacant' ? '⚪ Vacant' : '🔧 Maintenance'}
@@ -229,11 +229,11 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
             {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white/60">Notes <span className="text-white/25">(optional)</span></FormLabel>
+                <FormLabel className="text-muted-foreground">Notes <span className="text-muted-foreground/50">(optional)</span></FormLabel>
                 <FormControl>
                   <Input
                     placeholder="e.g. Window facing garden"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                     {...field}
                   />
                 </FormControl>
@@ -241,7 +241,7 @@ function RoomDialog({ open, onClose, propertyId, propertyName, editRoom }: RoomD
             )} />
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={onClose} className="text-white/40 hover:text-white">
+              <Button type="button" variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground">
                 Cancel
               </Button>
               <Button
@@ -376,9 +376,9 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-md">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <span className={`h-2.5 w-2.5 rounded-full ${cfg.dot}`} />
             Room {currentRoom.room_code}
             <Badge className={`ml-1 text-xs border-current bg-current/10 ${cfg.textColor}`}>{cfg.label}</Badge>
@@ -386,22 +386,22 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         </DialogHeader>
 
         {/* Room info summary */}
-        <div className="rounded-lg border border-white/8 bg-white/[0.03] p-4 space-y-2 text-sm">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-white/40">Tenant</span>
-            <span className="font-medium text-white">{currentRoom.tenant_name ?? '—'}</span>
+            <span className="text-muted-foreground">Tenant</span>
+            <span className="font-medium text-foreground">{currentRoom.tenant_name ?? '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">Monthly Rent</span>
-            <span className="font-medium text-white">{currentRoom.monthly_rent ? formatRinggit(currentRoom.monthly_rent) : '—'}</span>
+            <span className="text-muted-foreground">Monthly Rent</span>
+            <span className="font-medium text-foreground">{currentRoom.monthly_rent ? formatRinggit(currentRoom.monthly_rent) : '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">Paid This Month</span>
+            <span className="text-muted-foreground">Paid This Month</span>
             <span className="font-medium text-emerald-400">{formatRinggit(currentRoom.total_paid)}</span>
           </div>
           <Separator className="bg-white/8" />
           <div className="flex justify-between">
-            <span className="text-white/40">Outstanding</span>
+            <span className="text-muted-foreground">Outstanding</span>
             <span className={`text-lg font-bold ${currentRoom.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
               {formatRinggit(currentRoom.outstanding_balance)}
             </span>
@@ -412,12 +412,12 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         {whatsappUrl && lastPayment && (
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 space-y-2">
             <p className="text-sm font-medium text-emerald-400">✓ {formatRinggit(lastPayment.amount)} recorded!</p>
-            <Button asChild className="w-full bg-[#25D366] hover:bg-[#20bb5a] text-white font-semibold">
+            <Button asChild className="w-full bg-[#25D366] hover:bg-[#20bb5a] text-foreground font-semibold">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="mr-2 h-4 w-4" /> Send WhatsApp Receipt
               </a>
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose} className="w-full text-white/40 hover:text-white">
+            <Button variant="ghost" size="sm" onClick={onClose} className="w-full text-muted-foreground hover:text-foreground">
               Close
             </Button>
           </div>
@@ -429,14 +429,14 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
             <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4">
               <FormField control={form.control} name="payment_method" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Payment Method</FormLabel>
+                  <FormLabel className="text-muted-foreground">Payment Method</FormLabel>
                   <div className="grid grid-cols-2 gap-2">
                     {(['cash', 'bank_transfer'] as const).map(method => (
                       <button key={method} type="button" onClick={() => field.onChange(method)}
                         className={`rounded-lg border py-2.5 text-sm font-medium transition-all ${
                           field.value === method
                             ? 'border-violet-500/60 bg-violet-500/20 text-violet-300'
-                            : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20 hover:text-white/60'
+                            : 'border-border bg-muted text-muted-foreground hover:border-white/20 hover:text-muted-foreground'
                         }`}>
                         {method === 'cash' ? '💵 Cash' : '🏦 Bank Transfer'}
                       </button>
@@ -448,10 +448,10 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="payment_date" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60">Payment Date</FormLabel>
+                    <FormLabel className="text-muted-foreground">Payment Date</FormLabel>
                     <FormControl>
                       <Input type="date"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer h-12"
+                        className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer h-12"
                         onClick={e => e.currentTarget.showPicker?.()}
                         {...field} />
                     </FormControl>
@@ -461,10 +461,10 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
 
                 <FormField control={form.control} name="amount" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60">Amount (RM)</FormLabel>
+                    <FormLabel className="text-muted-foreground">Amount (RM)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0.01"
-                        className="bg-white/5 border-white/10 text-white text-lg font-semibold h-12 focus:border-violet-500/60
+                        className="bg-muted border-border text-foreground text-lg font-semibold h-12 focus:border-violet-500/60
                                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                         {...field} />
                     </FormControl>
@@ -475,10 +475,10 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
 
               <FormField control={form.control} name="reference" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Reference <span className="text-white/25">(optional)</span></FormLabel>
+                  <FormLabel className="text-muted-foreground">Reference <span className="text-muted-foreground/50">(optional)</span></FormLabel>
                   <FormControl>
                     <Input placeholder="Bank ref, cheque number…"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                       {...field} />
                   </FormControl>
                 </FormItem>
@@ -487,30 +487,30 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
               <div className="grid grid-cols-3 gap-2">
                 <FormField control={form.control} name="water_bill" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60 text-xs">Water Bill</FormLabel>
+                    <FormLabel className="text-muted-foreground text-xs">Water Bill</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0" placeholder="0.00"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
                         {...field} />
                     </FormControl>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="electricity_bill" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60 text-xs">Electric</FormLabel>
+                    <FormLabel className="text-muted-foreground text-xs">Electric</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0" placeholder="0.00"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
                         {...field} />
                     </FormControl>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="aircond_bill" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60 text-xs">Aircond</FormLabel>
+                    <FormLabel className="text-muted-foreground text-xs">Aircond</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0" placeholder="0.00"
-                        className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
+                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none h-9 text-sm"
                         {...field} />
                     </FormControl>
                   </FormItem>
@@ -518,7 +518,7 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
               </div>
 
               <Button type="submit" disabled={mutation.isPending}
-                className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-violet-500/20">
+                className="w-full h-11 bg-primary text-primary-foreground font-semibold shadow-lg shadow-violet-500/20">
                 {mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recording…</> : 'Record Payment'}
               </Button>
             </form>
@@ -526,7 +526,7 @@ function PaymentModal({ room, open, onClose }: PaymentModalProps) {
         )}
 
         {(currentRoom.billing_status === 'vacant' || currentRoom.billing_status === 'maintenance') && (
-          <p className="text-center text-sm text-white/30 py-2">
+          <p className="text-center text-sm text-muted-foreground/70 py-2">
             {currentRoom.billing_status === 'vacant' ? 'This room has no active tenant.' : 'This room is under maintenance.'}
           </p>
         )}
@@ -555,7 +555,7 @@ function RoomCard({ room, isAdmin, onPay, onEdit }: RoomCardProps) {
         <button
           onClick={onEdit}
           className="absolute top-1.5 right-1.5 h-5 w-5 rounded flex items-center justify-center
-                     text-white/0 group-hover:text-white/40 hover:!text-white hover:bg-white/10 transition-all"
+                     text-white/0 group-hover:text-muted-foreground hover:!text-foreground hover:bg-white/10 transition-all"
         >
           <Pencil className="h-3 w-3" />
         </button>
@@ -583,7 +583,7 @@ function RoomCard({ room, isAdmin, onPay, onEdit }: RoomCardProps) {
       {canPay && (
         <button
           onClick={onPay}
-          className="absolute inset-0 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+          className="absolute inset-0 rounded-xl cursor-pointer hover:bg-muted transition-colors"
           aria-label={`Log payment for ${room.room_code}`}
         />
       )}
@@ -650,14 +650,14 @@ export function PropertyRoomMatrixPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6">
+    <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 left-0 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
 
       {/* Back + header */}
       <div className="mb-6">
-        <Link to="/properties" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-4">
+        <Link to="/properties" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white/70 transition-colors mb-4">
           <ArrowLeft className="h-4 w-4" /> Properties
         </Link>
         <div className="flex items-start justify-between">
@@ -665,8 +665,8 @@ export function PropertyRoomMatrixPage() {
             {propLoading
               ? <Skeleton className="h-7 w-40 bg-white/10" />
               : <>
-                  <h1 className="text-2xl font-bold text-white">{property?.name}</h1>
-                  <p className="mt-0.5 text-sm text-white/35 max-w-xs truncate">{property?.address}</p>
+                  <h1 className="text-2xl font-bold text-foreground">{property?.name}</h1>
+                  <p className="mt-0.5 text-sm text-muted-foreground/70 max-w-xs truncate">{property?.address}</p>
                 </>
             }
           </div>
@@ -681,11 +681,11 @@ export function PropertyRoomMatrixPage() {
       {/* Summary badges */}
       {!isLoading && (rooms?.length ?? 0) > 0 && (
         <div className="mb-5 flex flex-wrap gap-2">
-          <Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{rooms!.length} rooms · {billingMonth}</Badge>
+          <Badge className="bg-muted text-muted-foreground border-border text-xs">{rooms!.length} rooms · {billingMonth}</Badge>
           {counts.paid        && <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">{counts.paid} paid</Badge>}
           {counts.overdue     && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-xs">{counts.overdue} overdue</Badge>}
           {counts.partial     && <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-xs">{counts.partial} partial</Badge>}
-          {counts.vacant      && <Badge className="bg-white/5 text-white/30 border-white/10 text-xs">{counts.vacant} vacant</Badge>}
+          {counts.vacant      && <Badge className="bg-muted text-muted-foreground/70 border-border text-xs">{counts.vacant} vacant</Badge>}
           {counts.maintenance && <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-xs">{counts.maintenance} maintenance</Badge>}
         </div>
       )}
@@ -693,13 +693,13 @@ export function PropertyRoomMatrixPage() {
       {/* Room grid */}
       {isLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-          {[...Array(20)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl bg-white/5" />)}
+          {[...Array(20)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl bg-muted" />)}
         </div>
       ) : !(rooms?.length) ? (
-        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
-          <Home className="mx-auto mb-4 h-12 w-12 text-white/15" />
-          <h3 className="text-lg font-semibold text-white/40">No rooms yet</h3>
-          <p className="mt-1 text-sm text-white/25">
+        <Card className="border-border bg-card p-12 text-center">
+          <Home className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-lg font-semibold text-muted-foreground">No rooms yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground/50">
             {isAdmin() ? 'Click "Add Room" to set up rooms for this property.' : 'No rooms have been configured.'}
           </p>
         </Card>
@@ -718,7 +718,7 @@ export function PropertyRoomMatrixPage() {
       )}
 
       {/* Legend */}
-      <div className="mt-8 flex flex-wrap gap-4 text-xs text-white/20">
+      <div className="mt-8 flex flex-wrap gap-4 text-xs text-muted-foreground/50">
         {(Object.entries(statusConfig) as [BillingStatus, typeof statusConfig[BillingStatus]][])
           .filter(([k]) => k !== 'upcoming')
           .map(([key, cfg]) => (

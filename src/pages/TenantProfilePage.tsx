@@ -122,9 +122,9 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
         {/* Personal fields */}
         <FormField control={form.control} name="full_name" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-white/50 text-xs">Full Name</FormLabel>
+            <FormLabel className="text-muted-foreground text-xs">Full Name</FormLabel>
             <FormControl>
-              <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+              <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -132,18 +132,18 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
         <div className="grid sm:grid-cols-2 gap-3">
           <FormField control={form.control} name="nric_passport" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">NRIC / Passport <span className="text-white/30">(optional)</span></FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">NRIC / Passport <span className="text-muted-foreground/70">(optional)</span></FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">Phone <span className="text-white/30">(optional)</span></FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">Phone <span className="text-muted-foreground/70">(optional)</span></FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -153,29 +153,29 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
         <Separator className="bg-white/8" />
 
         {/* Emergency fields */}
-        <p className="text-xs font-medium text-white/35">Emergency Contact</p>
+        <p className="text-xs font-medium text-muted-foreground/70">Emergency Contact</p>
         <div className="grid sm:grid-cols-3 gap-3">
           <FormField control={form.control} name="emergency_name" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">Name</FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">Name</FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
             </FormItem>
           )} />
           <FormField control={form.control} name="emergency_relation" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">Relation</FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">Relation</FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
             </FormItem>
           )} />
           <FormField control={form.control} name="emergency_phone" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white/50 text-xs">Phone</FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">Phone</FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
             </FormItem>
           )} />
@@ -183,9 +183,9 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
 
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-white/50 text-xs">Notes</FormLabel>
+            <FormLabel className="text-muted-foreground text-xs">Notes</FormLabel>
             <FormControl>
-              <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+              <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
             </FormControl>
           </FormItem>
         )} />
@@ -196,7 +196,7 @@ function EditTenantForm({ tenant, onDone }: { tenant: Tenant; onDone: () => void
             {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Save
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={onDone} className="text-white/40 hover:text-white">
+          <Button type="button" size="sm" variant="ghost" onClick={onDone} className="text-muted-foreground hover:text-foreground">
             <X className="h-3.5 w-3.5" /> Cancel
           </Button>
         </div>
@@ -214,16 +214,16 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
 
   const statusBadge = {
     active:     { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-    expired:    { label: 'Expired',    cls: 'bg-white/5 text-white/30 border-white/10' },
+    expired:    { label: 'Expired',    cls: 'bg-muted text-muted-foreground/70 border-border' },
     terminated: { label: 'Terminated', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  }[lease.status] ?? { label: lease.status, cls: 'bg-white/5 text-white/30 border-white/10' }
+  }[lease.status] ?? { label: lease.status, cls: 'bg-muted text-muted-foreground/70 border-border' }
 
   return (
-    <div className={`rounded-xl border p-4 space-y-3 ${isActive ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/6 bg-white/[0.02]'}`}>
+    <div className={`rounded-xl border p-4 space-y-3 ${isActive ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/6 bg-card'}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <Home className="h-4 w-4 text-white/30" />
-          <span className="text-sm font-semibold text-white">
+          <Home className="h-4 w-4 text-muted-foreground/70" />
+          <span className="text-sm font-semibold text-foreground">
             {room?.properties?.name ?? '—'} · Room {room?.code ?? '—'}
           </span>
         </div>
@@ -232,20 +232,20 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
-          <p className="text-white/35">Monthly Rent</p>
-          <p className="font-semibold text-white">{formatRinggit(lease.monthly_rent)}</p>
+          <p className="text-muted-foreground/70">Monthly Rent</p>
+          <p className="font-semibold text-foreground">{formatRinggit(lease.monthly_rent)}</p>
         </div>
         <div>
-          <p className="text-white/35">Due Day</p>
-          <p className="font-semibold text-white">Day {lease.due_day}</p>
+          <p className="text-muted-foreground/70">Due Day</p>
+          <p className="font-semibold text-foreground">Day {lease.due_day}</p>
         </div>
         <div>
-          <p className="text-white/35">Move In</p>
-          <p className="font-semibold text-white">{lease.move_in_date ? format(new Date(lease.move_in_date), 'dd MMM yyyy') : '—'}</p>
+          <p className="text-muted-foreground/70">Move In</p>
+          <p className="font-semibold text-foreground">{lease.move_in_date ? format(new Date(lease.move_in_date), 'dd MMM yyyy') : '—'}</p>
         </div>
         <div>
-          <p className="text-white/35">Expires</p>
-          <p className={`font-semibold ${isExpired && isActive ? 'text-red-400' : 'text-white'}`}>
+          <p className="text-muted-foreground/70">Expires</p>
+          <p className={`font-semibold ${isExpired && isActive ? 'text-red-400' : 'text-foreground'}`}>
             {lease.expiry_date ? format(new Date(lease.expiry_date), 'dd MMM yyyy') : '—'}
           </p>
         </div>
@@ -253,8 +253,8 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
 
       {(lease.security_deposit > 0 || lease.utility_deposit > 0) && (
         <div className="flex gap-4 text-xs border-t border-white/5 pt-3">
-          <span className="text-white/30">Security deposit: <span className="text-white/60">{formatRinggit(lease.security_deposit)}</span></span>
-          <span className="text-white/30">Utility deposit: <span className="text-white/60">{formatRinggit(lease.utility_deposit)}</span></span>
+          <span className="text-muted-foreground/70">Security deposit: <span className="text-muted-foreground">{formatRinggit(lease.security_deposit)}</span></span>
+          <span className="text-muted-foreground/70">Utility deposit: <span className="text-muted-foreground">{formatRinggit(lease.utility_deposit)}</span></span>
         </div>
       )}
 
@@ -276,11 +276,11 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
 function InfoRow({ label, value, icon: Icon }: { label: string; value: string | null; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-      <span className="text-xs text-white/35 flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground/70 flex items-center gap-1.5">
         {Icon && <Icon className="h-3.5 w-3.5" />}
         {label}
       </span>
-      <span className="text-sm text-white font-medium text-right max-w-[60%] truncate">{value ?? '—'}</span>
+      <span className="text-sm text-foreground font-medium text-right max-w-[60%] truncate">{value ?? '—'}</span>
     </div>
   )
 }
@@ -301,7 +301,7 @@ export function TenantProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8 space-y-6">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 space-y-6">
         <Skeleton className="h-6 w-24 bg-white/10" />
         <div className="flex items-center gap-4">
           <Skeleton className="h-14 w-14 rounded-full bg-white/10" />
@@ -310,16 +310,16 @@ export function TenantProfilePage() {
             <Skeleton className="h-4 w-28 bg-white/10" />
           </div>
         </div>
-        <Skeleton className="h-48 rounded-xl bg-white/5" />
+        <Skeleton className="h-48 rounded-xl bg-muted" />
       </div>
     )
   }
 
   if (!tenant) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-background p-8 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/40">Tenant not found.</p>
+          <p className="text-muted-foreground">Tenant not found.</p>
           <Button asChild className="mt-4" variant="ghost">
             <Link to="/tenants">← Back to Tenants</Link>
           </Button>
@@ -329,14 +329,14 @@ export function TenantProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 left-1/4 h-[350px] w-[350px] rounded-full bg-violet-600/8 blur-[100px]" />
       </div>
 
       {/* Back */}
       <button onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6">
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white/70 transition-colors mb-6">
         <ArrowLeft className="h-4 w-4" /> Tenants
       </button>
 
@@ -349,8 +349,8 @@ export function TenantProfilePage() {
               {initials}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{tenant.full_name}</h1>
-              <p className="text-sm text-white/35 mt-0.5 flex items-center gap-1.5">
+              <h1 className="text-2xl font-bold text-foreground">{tenant.full_name}</h1>
+              <p className="text-sm text-muted-foreground/70 mt-0.5 flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" />
                 Added {format(new Date(tenant.created_at), 'dd MMM yyyy')}
               </p>
@@ -358,7 +358,7 @@ export function TenantProfilePage() {
           </div>
           {isAdmin() && !isEditing && (
             <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}
-              className="text-white/40 hover:text-white border border-white/10 hover:border-white/20">
+              className="text-muted-foreground hover:text-foreground border border-border hover:border-white/20">
               <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
             </Button>
           )}
@@ -378,9 +378,9 @@ export function TenantProfilePage() {
         )}
 
         {/* Profile info / Edit form */}
-        <Card className="border-white/8 bg-white/[0.03] p-6">
+        <Card className="border-border bg-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-white/60">Profile Details</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground">Profile Details</h2>
           </div>
 
           {isEditing ? (
@@ -397,7 +397,7 @@ export function TenantProfilePage() {
               {(tenant.emergency_name || tenant.emergency_phone) && (
                 <>
                   <Separator className="bg-white/6 my-3" />
-                  <p className="text-xs font-medium text-white/30 flex items-center gap-1.5 mb-2">
+                  <p className="text-xs font-medium text-muted-foreground/70 flex items-center gap-1.5 mb-2">
                     <AlertCircle className="h-3.5 w-3.5" /> Emergency Contact
                   </p>
                   <InfoRow label="Name" value={tenant.emergency_name ?? null} />
@@ -411,14 +411,14 @@ export function TenantProfilePage() {
 
         {/* Lease History */}
         <div>
-          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-3">
-            Lease History <span className="text-white/20 font-normal normal-case">({tenant.leases?.length ?? 0} total)</span>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Lease History <span className="text-muted-foreground/50 font-normal normal-case">({tenant.leases?.length ?? 0} total)</span>
           </h2>
 
           {!tenant.leases?.length ? (
-            <Card className="border-white/8 bg-white/[0.03] p-8 text-center">
-              <FileText className="mx-auto mb-3 h-8 w-8 text-white/15" />
-              <p className="text-sm text-white/30">No leases yet.</p>
+            <Card className="border-border bg-card p-8 text-center">
+              <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground/70">No leases yet.</p>
             </Card>
           ) : (
             <div className="space-y-3">

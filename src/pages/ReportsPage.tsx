@@ -146,12 +146,12 @@ function useHistoricalReport(billingMonth: string) {
 function StatCard({ label, value, sub, icon: Icon, color, bgColor }:
   { label: string; value: string; sub?: string; icon: React.ComponentType<{ className?: string }>; color: string; bgColor: string }) {
   return (
-    <Card className="border-white/8 bg-white/[0.03] p-5">
+    <Card className="border-border bg-card p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
           <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-white/25">{sub}</p>}
+          {sub && <p className="mt-0.5 text-xs text-muted-foreground/50">{sub}</p>}
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bgColor}`}>
           <Icon className={`h-5 w-5 ${color}`} />
@@ -169,7 +169,7 @@ function SortTh({ label, sortKey, current, dir, onSort }:
   return (
     <button
       onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-left text-xs font-medium text-white/40 uppercase tracking-wider hover:text-white/70 transition-colors"
+      className="flex items-center gap-1 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-white/70 transition-colors"
     >
       {label}
       {active
@@ -185,7 +185,7 @@ const STATUS_CFG: Record<string, { label: string; cls: string; dot: string }> = 
   paid:        { label: 'Paid',        cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', dot: 'bg-emerald-400' },
   partial:     { label: 'Partial',     cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20',   dot: 'bg-orange-400' },
   overdue:     { label: 'Overdue',     cls: 'bg-red-500/10 text-red-400 border-red-500/20',             dot: 'bg-red-400' },
-  vacant:      { label: 'Vacant',      cls: 'bg-white/5 text-white/30 border-white/10',                 dot: 'bg-white/30' },
+  vacant:      { label: 'Vacant',      cls: 'bg-muted text-muted-foreground/70 border-border',                 dot: 'bg-white/30' },
   maintenance: { label: 'Maintenance', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',    dot: 'bg-yellow-400' },
   upcoming:    { label: 'Upcoming',    cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20',          dot: 'bg-blue-400' },
 }
@@ -284,7 +284,7 @@ export function ReportsPage() {
   const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
@@ -292,13 +292,13 @@ export function ReportsPage() {
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Monthly Rent Report</h1>
-          <p className="mt-1 text-sm text-white/40">{monthLabel} · Outstanding balance summary</p>
+          <h1 className="text-2xl font-bold text-foreground">Monthly Rent Report</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{monthLabel} · Outstanding balance summary</p>
         </div>
         <Button
           onClick={handleExport}
           disabled={isLoading || !filtered.length}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
+          className="bg-emerald-600 hover:bg-emerald-500 text-foreground shadow-lg shadow-emerald-500/20 disabled:opacity-40"
         >
           <Download className="mr-2 h-4 w-4" /> Export CSV
         </Button>
@@ -308,11 +308,11 @@ export function ReportsPage() {
       <div className="mb-5 flex flex-wrap gap-3">
         {/* Month picker */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white/35 shrink-0">Month</span>
+          <span className="text-xs text-muted-foreground/70 shrink-0">Month</span>
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground
                        focus:outline-none focus:border-violet-500/50 cursor-pointer"
           >
             {MONTH_OPTIONS.map(m => (
@@ -323,11 +323,11 @@ export function ReportsPage() {
 
         {/* Property filter */}
         <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-white/30 shrink-0" />
+          <Filter className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
           <select
             value={propertyFilter}
             onChange={e => setPropertyFilter(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground
                        focus:outline-none focus:border-violet-500/50 cursor-pointer"
           >
             <option value="all" className="bg-[#1a1a2e]">All Properties</option>
@@ -338,11 +338,11 @@ export function ReportsPage() {
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1">
+        <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
           {(['all', 'overdue', 'partial', 'paid'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition-all ${
-                statusFilter === s ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white/70'
+                statusFilter === s ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-white/70'
               }`}>
               {s}
             </button>
@@ -353,20 +353,20 @@ export function ReportsPage() {
       {/* Stat cards */}
       {isLoading ? (
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />)}
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl bg-muted" />)}
         </div>
       ) : (
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
           <StatCard label="Outstanding" value={formatRinggit(stats.totalOutstanding)}
-            icon={AlertCircle} color={stats.totalOutstanding > 0 ? 'text-red-400' : 'text-white/40'}
-            bgColor={stats.totalOutstanding > 0 ? 'bg-red-500/15' : 'bg-white/5'}
+            icon={AlertCircle} color={stats.totalOutstanding > 0 ? 'text-red-400' : 'text-muted-foreground'}
+            bgColor={stats.totalOutstanding > 0 ? 'bg-red-500/15' : 'bg-muted'}
             sub="unpaid this month" />
           <StatCard label="Collected" value={formatRinggit(stats.totalCollected)}
             icon={TrendingUp} color="text-emerald-400" bgColor="bg-emerald-500/15"
             sub="total received" />
           <StatCard label="Overdue / Partial" value={`${stats.overdueCount + stats.partialCount}`}
-            icon={CircleDot} color={stats.overdueCount > 0 ? 'text-orange-400' : 'text-white/40'}
-            bgColor={stats.overdueCount > 0 ? 'bg-orange-500/15' : 'bg-white/5'}
+            icon={CircleDot} color={stats.overdueCount > 0 ? 'text-orange-400' : 'text-muted-foreground'}
+            bgColor={stats.overdueCount > 0 ? 'bg-orange-500/15' : 'bg-muted'}
             sub={`${stats.overdueCount} overdue, ${stats.partialCount} partial`} />
           <StatCard label="Fully Paid" value={`${stats.paidCount}`}
             icon={CheckCircle2} color="text-emerald-400" bgColor="bg-emerald-500/15"
@@ -377,29 +377,29 @@ export function ReportsPage() {
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">
-          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-white/5" />)}
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-muted" />)}
         </div>
       ) : !filtered.length ? (
-        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
-          <Home className="mx-auto mb-4 h-12 w-12 text-white/15" />
-          <h3 className="text-base font-semibold text-white/40">No data for {monthLabel}</h3>
-          <p className="mt-1 text-sm text-white/25">
+        <Card className="border-border bg-card p-12 text-center">
+          <Home className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-base font-semibold text-muted-foreground">No data for {monthLabel}</h3>
+          <p className="mt-1 text-sm text-muted-foreground/50">
             {statusFilter !== 'all'
               ? `No ${statusFilter} rooms for this period. Try "All" status.`
               : 'No rooms or leases found for this month.'}
           </p>
         </Card>
       ) : (
-        <Card className="border-white/8 bg-white/[0.03] overflow-hidden">
+        <Card className="border-border bg-card overflow-hidden">
           {/* Table head */}
-          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-white/[0.02]">
+          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-card">
             <SortTh label="Property"    sortKey="property"    current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Room"        sortKey="room"        current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Tenant"      sortKey="tenant"      current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Rent"        sortKey="rent"        current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Paid"        sortKey="paid"        current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Outstanding" sortKey="outstanding" current={sortKey} dir={sortDir} onSort={handleSort} />
-            <span className="text-xs font-medium text-white/40 uppercase tracking-wider">Status</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
           </div>
 
           {/* Table rows */}
@@ -409,15 +409,15 @@ export function ReportsPage() {
               <div
                 key={row.room_id}
                 className={`grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 items-center
-                  text-sm transition-colors hover:bg-white/[0.02]
+                  text-sm transition-colors hover:bg-card
                   ${idx !== filtered.length - 1 ? 'border-b border-white/4' : ''}`}
               >
-                <span className="text-white/60 truncate text-xs">{row.property_name}</span>
-                <span className="font-bold text-white whitespace-nowrap">{row.room_code}</span>
-                <span className="text-white/70 truncate">{row.tenant_name ?? <span className="text-white/25">—</span>}</span>
-                <span className="text-white/50 text-right whitespace-nowrap">{formatRinggit(row.monthly_rent)}</span>
+                <span className="text-muted-foreground truncate text-xs">{row.property_name}</span>
+                <span className="font-bold text-foreground whitespace-nowrap">{row.room_code}</span>
+                <span className="text-white/70 truncate">{row.tenant_name ?? <span className="text-muted-foreground/50">—</span>}</span>
+                <span className="text-muted-foreground text-right whitespace-nowrap">{formatRinggit(row.monthly_rent)}</span>
                 <span className="text-emerald-400 text-right whitespace-nowrap font-medium">{formatRinggit(row.total_paid)}</span>
-                <span className={`text-right whitespace-nowrap font-bold ${row.outstanding > 0 ? 'text-red-400' : 'text-white/30'}`}>
+                <span className={`text-right whitespace-nowrap font-bold ${row.outstanding > 0 ? 'text-red-400' : 'text-muted-foreground/70'}`}>
                   {formatRinggit(row.outstanding)}
                 </span>
                 <Badge className={`text-xs justify-center ${cfg.cls}`}>{cfg.label}</Badge>
@@ -426,11 +426,11 @@ export function ReportsPage() {
           })}
 
           {/* Totals row */}
-          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3.5 border-t border-white/10 bg-white/[0.03]">
-            <span className="text-xs font-semibold text-white/40 uppercase tracking-wider col-span-3">
+          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3.5 border-t border-border bg-card">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider col-span-3">
               {filtered.length} rooms shown
             </span>
-            <span className="text-right text-sm font-semibold text-white/50 whitespace-nowrap">
+            <span className="text-right text-sm font-semibold text-muted-foreground whitespace-nowrap">
               {formatRinggit(filtered.reduce((s, r) => s + r.monthly_rent, 0))}
             </span>
             <span className="text-right text-sm font-semibold text-emerald-400 whitespace-nowrap">

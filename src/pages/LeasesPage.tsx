@@ -31,7 +31,7 @@ const STATUS_TABS: { key: LeaseStatus | 'all'; label: string }[] = [
 
 const STATUS_BADGE: Record<LeaseStatus, { label: string; cls: string }> = {
   active:     { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-  expired:    { label: 'Expired',    cls: 'bg-white/5 text-white/30 border-white/10' },
+  expired:    { label: 'Expired',    cls: 'bg-muted text-muted-foreground/70 border-border' },
   terminated: { label: 'Terminated', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
 }
 
@@ -67,8 +67,8 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
 
   return (
     <Link to={`/leases/${lease.id}`}>
-      <div className="group flex items-center gap-4 rounded-xl border border-white/6 bg-white/[0.02]
-                      px-4 py-3.5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-150">
+      <div className="group flex items-center gap-4 rounded-xl border border-white/6 bg-card
+                      px-4 py-3.5 hover:bg-white/[0.05] hover:border-border transition-all duration-150">
         {/* Avatar */}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-sm font-semibold text-violet-300">
           {initials}
@@ -76,21 +76,21 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
 
         {/* Tenant + Room */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white truncate">{lease.tenants?.full_name ?? '—'}</p>
-          <p className="text-xs text-white/35 flex items-center gap-1 mt-0.5">
+          <p className="text-sm font-semibold text-foreground truncate">{lease.tenants?.full_name ?? '—'}</p>
+          <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-0.5">
             <Home className="h-3 w-3 shrink-0" />
             {lease.rooms?.properties?.name ?? '—'} · Room {lease.rooms?.code ?? '—'}
           </p>
         </div>
 
         {/* Rent */}
-        <div className="hidden sm:block text-sm font-semibold text-white shrink-0">
+        <div className="hidden sm:block text-sm font-semibold text-foreground shrink-0">
           {formatRinggit(lease.monthly_rent)}
-          <span className="text-xs text-white/30 font-normal">/mo</span>
+          <span className="text-xs text-muted-foreground/70 font-normal">/mo</span>
         </div>
 
         {/* Expiry */}
-        <div className="hidden md:block text-xs text-white/35 shrink-0">
+        <div className="hidden md:block text-xs text-muted-foreground/70 shrink-0">
           <div className="flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />
             {expiryDate ? format(expiryDate, 'dd MMM yyyy') : '—'}
@@ -103,7 +103,7 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
         {/* Status */}
         <Badge className={`text-xs shrink-0 ${badge.cls}`}>{badge.label}</Badge>
 
-        <ChevronRight className="h-4 w-4 shrink-0 text-white/15 group-hover:text-white/40 transition-colors" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
       </div>
     </Link>
   )
@@ -125,7 +125,7 @@ export function LeasesPage() {
   }, {} as Record<LeaseStatus, number>) ?? {}
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-1/4 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
@@ -133,8 +133,8 @@ export function LeasesPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Leases</h1>
-          <p className="mt-1 text-sm text-white/40">
+          <h1 className="text-2xl font-bold text-foreground">Leases</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {isLoading ? '—' : `${leases?.length ?? 0} total · ${counts.active ?? 0} active`}
           </p>
         </div>
@@ -146,7 +146,7 @@ export function LeasesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-4 flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1 w-fit">
+      <div className="mb-4 flex gap-1 rounded-xl border border-border bg-card p-1 w-fit">
         {STATUS_TABS.map(tab => (
           <button
             key={tab.key}
@@ -154,13 +154,13 @@ export function LeasesPage() {
             className={`relative rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-violet-600 text-white shadow-sm'
-                : 'text-white/40 hover:text-white/70'
+                : 'text-muted-foreground hover:text-white/70'
             }`}
           >
             {tab.label}
             {tab.key !== 'all' && counts[tab.key as LeaseStatus] > 0 && (
               <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
-                activeTab === tab.key ? 'bg-white/20' : 'bg-white/10 text-white/30'
+                activeTab === tab.key ? 'bg-white/20' : 'bg-white/10 text-muted-foreground/70'
               }`}>
                 {counts[tab.key as LeaseStatus]}
               </span>
@@ -172,13 +172,13 @@ export function LeasesPage() {
       {/* List */}
       {isLoading ? (
         <div className="space-y-2">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl bg-white/5" />)}
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl bg-muted" />)}
         </div>
       ) : !filtered.length ? (
-        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
-          <FileText className="mx-auto mb-4 h-12 w-12 text-white/15" />
-          <h3 className="text-base font-semibold text-white/40">No {activeTab !== 'all' ? activeTab : ''} leases</h3>
-          <p className="mt-1 text-sm text-white/25">
+        <Card className="border-border bg-card p-12 text-center">
+          <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-base font-semibold text-muted-foreground">No {activeTab !== 'all' ? activeTab : ''} leases</h3>
+          <p className="mt-1 text-sm text-muted-foreground/50">
             {activeTab === 'all' || activeTab === 'active'
               ? 'Create a new lease to bind a tenant to a room.'
               : `No ${activeTab} leases on record.`}

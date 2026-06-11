@@ -108,8 +108,8 @@ function InfoGrid({ items }: { items: { label: string; value: string | number | 
     <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {items.map(({ label, value, highlight }) => (
         <div key={label} className="space-y-1">
-          <dt className="text-xs text-white/35">{label}</dt>
-          <dd className={`text-sm font-semibold ${highlight ? 'text-violet-300' : 'text-white'}`}>
+          <dt className="text-xs text-muted-foreground/70">{label}</dt>
+          <dd className={`text-sm font-semibold ${highlight ? 'text-violet-300' : 'text-foreground'}`}>
             {value ?? '—'}
           </dd>
         </div>
@@ -120,8 +120,8 @@ function InfoGrid({ items }: { items: { label: string; value: string | number | 
 
 function MethodBadge({ method }: { method: 'cash' | 'bank_transfer' }) {
   return method === 'cash'
-    ? <span className="inline-flex items-center gap-1 text-xs text-white/50">💵 Cash</span>
-    : <span className="inline-flex items-center gap-1 text-xs text-white/50">🏦 Transfer</span>
+    ? <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">💵 Cash</span>
+    : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">🏦 Transfer</span>
 }
 
 function StatusInfo({ lease }: { lease: LeaseDetail }) {
@@ -222,7 +222,7 @@ function TerminateDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-sm">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-red-400 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" /> Terminate Lease
@@ -232,22 +232,22 @@ function TerminateDialog({
           <p className="text-white/70">
             You are about to terminate the lease for:
           </p>
-          <div className="rounded-lg border border-white/8 bg-white/[0.03] p-3 space-y-1">
-            <p className="font-semibold text-white">{lease.tenants?.full_name}</p>
-            <p className="text-white/40 text-xs">Room {lease.rooms?.code} · {lease.rooms?.properties?.name}</p>
+          <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+            <p className="font-semibold text-foreground">{lease.tenants?.full_name}</p>
+            <p className="text-muted-foreground text-xs">Room {lease.rooms?.code} · {lease.rooms?.properties?.name}</p>
           </div>
-          <p className="text-white/50">
-            This will set the lease to <span className="text-red-400 font-medium">Terminated</span> and mark the room as <span className="text-white font-medium">Vacant</span>. This action cannot be undone.
+          <p className="text-muted-foreground">
+            This will set the lease to <span className="text-red-400 font-medium">Terminated</span> and mark the room as <span className="text-foreground font-medium">Vacant</span>. This action cannot be undone.
           </p>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-white/40 hover:text-white">
+          <Button variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground">
             Cancel
           </Button>
           <Button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="bg-red-600 hover:bg-red-500 text-white"
+            className="bg-red-600 hover:bg-red-500 text-foreground"
           >
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirm Termination
@@ -314,27 +314,27 @@ function EditLeaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white">Edit Lease Terms</DialogTitle>
+          <DialogTitle className="text-foreground">Edit Lease Terms</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="monthly_rent" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Monthly Rent (RM)</FormLabel>
+                  <FormLabel className="text-muted-foreground">Monthly Rent (RM)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                    <Input type="number" step="0.01" min="0" className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="due_day" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Due Day (1-28)</FormLabel>
+                  <FormLabel className="text-muted-foreground">Due Day (1-28)</FormLabel>
                   <FormControl>
-                    <Input type="number" min="1" max="28" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                    <Input type="number" min="1" max="28" className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -344,18 +344,18 @@ function EditLeaseDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="move_in_date" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Move-in Date</FormLabel>
+                  <FormLabel className="text-muted-foreground">Move-in Date</FormLabel>
                   <FormControl>
-                    <Input type="date" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
+                    <Input type="date" className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="expiry_date" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Expiry Date</FormLabel>
+                  <FormLabel className="text-muted-foreground">Expiry Date</FormLabel>
                   <FormControl>
-                    <Input type="date" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
+                    <Input type="date" className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer" onClick={e => e.currentTarget.showPicker?.()} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -365,18 +365,18 @@ function EditLeaseDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="security_deposit" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Security Deposit</FormLabel>
+                  <FormLabel className="text-muted-foreground">Security Deposit</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                    <Input type="number" step="0.01" min="0" className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="utility_deposit" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Utility Deposit</FormLabel>
+                  <FormLabel className="text-muted-foreground">Utility Deposit</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" min="0" className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
+                    <Input type="number" step="0.01" min="0" className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -385,16 +385,16 @@ function EditLeaseDialog({
 
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white/60">Notes</FormLabel>
+                <FormLabel className="text-muted-foreground">Notes</FormLabel>
                 <FormControl>
-                  <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60" {...field} />
+                  <Input className="bg-muted border-border text-foreground focus:border-violet-500/60" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={onClose} className="text-white/40 hover:text-white">Cancel</Button>
+              <Button type="button" variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground">Cancel</Button>
               <Button type="submit" disabled={mutation.isPending} className="bg-violet-600 hover:bg-violet-500 text-white">
                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
@@ -431,20 +431,20 @@ export function LeaseDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8 space-y-6 max-w-3xl">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 space-y-6 max-w-3xl">
         <Skeleton className="h-6 w-24 bg-white/10" />
         <Skeleton className="h-10 w-64 bg-white/10" />
-        <Skeleton className="h-32 rounded-xl bg-white/5" />
-        <Skeleton className="h-48 rounded-xl bg-white/5" />
+        <Skeleton className="h-32 rounded-xl bg-muted" />
+        <Skeleton className="h-48 rounded-xl bg-muted" />
       </div>
     )
   }
 
   if (!lease) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-background p-8 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/40">Lease not found.</p>
+          <p className="text-muted-foreground">Lease not found.</p>
           <Button asChild className="mt-4" variant="ghost"><Link to="/leases">← Back</Link></Button>
         </div>
       </div>
@@ -452,14 +452,14 @@ export function LeaseDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-1/4 h-[350px] w-[350px] rounded-full bg-violet-600/8 blur-[100px]" />
       </div>
 
       {/* Back */}
       <button onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6">
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white/70 transition-colors mb-6">
         <ArrowLeft className="h-4 w-4" /> Leases
       </button>
 
@@ -471,10 +471,10 @@ export function LeaseDetailPage() {
             <div className="flex items-center gap-2 mb-1">
               <Badge className={`text-xs ${badge.cls}`}>{badge.label}</Badge>
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               {lease.tenants?.full_name ?? '—'}
             </h1>
-            <p className="mt-1 text-sm text-white/35 flex items-center gap-1.5">
+            <p className="mt-1 text-sm text-muted-foreground/70 flex items-center gap-1.5">
               <Home className="h-3.5 w-3.5" />
               {lease.rooms?.properties?.name ?? '—'} · Room {lease.rooms?.code ?? '—'}
             </p>
@@ -485,7 +485,7 @@ export function LeaseDetailPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowEdit(true)}
-                className="border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                className="border border-border text-white/70 hover:bg-white/10 hover:text-foreground"
               >
                 <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
               </Button>
@@ -505,8 +505,8 @@ export function LeaseDetailPage() {
         <StatusInfo lease={lease} />
 
         {/* Lease details */}
-        <Card className="border-white/8 bg-white/[0.03] p-6 space-y-5">
-          <h2 className="text-sm font-semibold text-white/50 flex items-center gap-1.5">
+        <Card className="border-border bg-card p-6 space-y-5">
+          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
             <CreditCard className="h-4 w-4 text-violet-400" /> Financial Terms
           </h2>
           <InfoGrid items={[
@@ -516,7 +516,7 @@ export function LeaseDetailPage() {
             { label: 'Utility Deposit',   value: formatRinggit(lease.utility_deposit) },
           ]} />
           <Separator className="bg-white/6" />
-          <h2 className="text-sm font-semibold text-white/50 flex items-center gap-1.5">
+          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4 text-violet-400" /> Dates
           </h2>
           <InfoGrid items={[
@@ -529,7 +529,7 @@ export function LeaseDetailPage() {
             <>
               <Separator className="bg-white/6" />
               <div>
-                <p className="text-xs text-white/35 mb-1">Notes</p>
+                <p className="text-xs text-muted-foreground/70 mb-1">Notes</p>
                 <p className="text-sm text-white/70">{lease.notes}</p>
               </div>
             </>
@@ -538,18 +538,18 @@ export function LeaseDetailPage() {
 
         {/* Tenant + Room cards */}
         <div className="grid sm:grid-cols-2 gap-4">
-          <Card className="border-white/8 bg-white/[0.03] p-4">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Card className="border-border bg-card p-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" /> Tenant
             </h2>
             <Link to={`/tenants/${lease.tenant_id}`} className="group">
-              <p className="text-sm font-semibold text-white group-hover:text-violet-300 transition-colors">
+              <p className="text-sm font-semibold text-foreground group-hover:text-violet-300 transition-colors">
                 {lease.tenants?.full_name ?? '—'}
               </p>
-              <p className="text-xs text-white/35 mt-1 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
                 <CreditCard className="h-3 w-3" /> {lease.tenants?.nric_passport ?? '—'}
               </p>
-              <p className="text-xs text-white/35 mt-0.5 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground/70 mt-0.5 flex items-center gap-1">
                 <Phone className="h-3 w-3" /> {lease.tenants?.phone ?? '—'}
               </p>
               <p className="text-xs text-violet-400 mt-2 group-hover:text-violet-300 transition-colors">
@@ -558,16 +558,16 @@ export function LeaseDetailPage() {
             </Link>
           </Card>
 
-          <Card className="border-white/8 bg-white/[0.03] p-4">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Card className="border-border bg-card p-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Home className="h-3.5 w-3.5" /> Room
             </h2>
             <Link to={`/properties/${lease.rooms?.property_id}`} className="group">
-              <p className="text-sm font-semibold text-white group-hover:text-violet-300 transition-colors">
+              <p className="text-sm font-semibold text-foreground group-hover:text-violet-300 transition-colors">
                 {lease.rooms?.properties?.name ?? '—'} · Room {lease.rooms?.code ?? '—'}
               </p>
-              <p className="text-xs text-white/35 mt-1">Room No. {lease.rooms?.room_number}</p>
-              <p className="text-xs text-white/35 mt-0.5">Base rent: {formatRinggit(lease.rooms?.base_rent ?? 0)}</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Room No. {lease.rooms?.room_number}</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">Base rent: {formatRinggit(lease.rooms?.base_rent ?? 0)}</p>
               <p className="text-xs text-violet-400 mt-2 group-hover:text-violet-300 transition-colors">
                 View room matrix →
               </p>
@@ -578,11 +578,11 @@ export function LeaseDetailPage() {
         {/* Payment History */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Wallet className="h-4 w-4" /> Payment History
             </h2>
             {paymentCount > 0 && (
-              <div className="flex items-center gap-3 text-xs text-white/30">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground/70">
                 <span>{paymentCount} payment{paymentCount !== 1 ? 's' : ''}</span>
                 <span className="text-emerald-400 font-medium">{formatRinggit(totalPaid)} total</span>
               </div>
@@ -591,20 +591,20 @@ export function LeaseDetailPage() {
 
           {paymentsLoading ? (
             <div className="space-y-2">
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-white/5" />)}
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-muted" />)}
             </div>
           ) : !payments?.length ? (
-            <Card className="border-white/8 bg-white/[0.03] p-8 text-center">
-              <FileText className="mx-auto mb-3 h-8 w-8 text-white/15" />
-              <p className="text-sm text-white/30">No payments recorded yet.</p>
-              <p className="text-xs text-white/20 mt-1">
+            <Card className="border-border bg-card p-8 text-center">
+              <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground/70">No payments recorded yet.</p>
+              <p className="text-xs text-muted-foreground/50 mt-1">
                 Log payments from the Room Matrix page.
               </p>
             </Card>
           ) : (
-            <Card className="border-white/8 bg-white/[0.03] overflow-hidden">
+            <Card className="border-border bg-card overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2.5 border-b border-white/6 text-xs font-medium text-white/30 uppercase tracking-wider">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2.5 border-b border-white/6 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
                 <span>Billing Month</span>
                 <span className="text-right hidden sm:block">Method</span>
                 <span className="text-right hidden sm:block">Reference</span>
@@ -618,17 +618,17 @@ export function LeaseDetailPage() {
                     ${idx !== payments.length - 1 ? 'border-b border-white/4' : ''}`}
                 >
                   <div>
-                    <p className="text-white font-medium">
+                    <p className="text-foreground font-medium">
                       {format(new Date(payment.billing_month), 'MMMM yyyy')}
                     </p>
-                    <p className="text-xs text-white/30 mt-0.5">
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">
                       Paid {format(new Date(payment.payment_date ?? payment.paid_at), 'dd MMM yyyy')}
                     </p>
                   </div>
                   <div className="hidden sm:block">
                     <MethodBadge method={payment.payment_method} />
                   </div>
-                  <div className="hidden sm:block text-xs text-white/30 max-w-[120px] truncate text-right">
+                  <div className="hidden sm:block text-xs text-muted-foreground/70 max-w-[120px] truncate text-right">
                     {payment.reference ?? '—'}
                   </div>
                   <div className="text-right">
@@ -638,8 +638,8 @@ export function LeaseDetailPage() {
               ))}
 
               {/* Total row */}
-              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3 border-t border-white/8 bg-white/[0.02]">
-                <span className="text-xs text-white/30 font-medium uppercase tracking-wider">Total Collected</span>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3 border-t border-border bg-card">
+                <span className="text-xs text-muted-foreground/70 font-medium uppercase tracking-wider">Total Collected</span>
                 <span className="text-right font-bold text-emerald-400">{formatRinggit(totalPaid)}</span>
               </div>
             </Card>

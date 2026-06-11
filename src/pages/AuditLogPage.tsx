@@ -151,7 +151,7 @@ function useAuditLog(dateRange: DateRange, actionFilter: AuditAction | 'all') {
 function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: boolean; isLast: boolean }) {
   const cfg = ACTION_CONFIG[entry.action] ?? {
     label: entry.action, icon: Shield,
-    color: 'text-white/40', bgColor: 'bg-white/5', dot: 'bg-white/20',
+    color: 'text-muted-foreground', bgColor: 'bg-muted', dot: 'bg-white/20',
   }
   const Icon = cfg.icon
   const metaStr = formatMetadata(entry.action, entry.metadata)
@@ -173,13 +173,13 @@ function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: bool
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</span>
             {metaStr && (
-              <span className="text-sm text-white/60 truncate max-w-xs">{metaStr}</span>
+              <span className="text-sm text-muted-foreground truncate max-w-xs">{metaStr}</span>
             )}
           </div>
           <time
             dateTime={entry.created_at}
             title={format(ts, 'dd MMM yyyy HH:mm:ss')}
-            className="text-xs text-white/25 shrink-0"
+            className="text-xs text-muted-foreground/50 shrink-0"
           >
             {formatDistanceToNow(ts, { addSuffix: true })}
           </time>
@@ -187,7 +187,7 @@ function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: bool
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {/* Actor */}
-          <span className="text-xs text-white/35">
+          <span className="text-xs text-muted-foreground/70">
             by{' '}
             <span className="text-white/55 font-medium">
               {entry.user_profiles?.full_name ?? 'System'}
@@ -202,7 +202,7 @@ function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: bool
           )}
 
           {/* Exact time on hover-friendly small screen */}
-          <span className="text-xs text-white/20 hidden sm:inline">
+          <span className="text-xs text-muted-foreground/50 hidden sm:inline">
             {format(ts, 'dd MMM yyyy, HH:mm')}
           </span>
         </div>
@@ -210,10 +210,10 @@ function AuditRow({ entry, isFirst, isLast }: { entry: AuditEntry; isFirst: bool
         {/* Raw metadata (collapsed preview) */}
         {entry.metadata && Object.keys(entry.metadata).length > 0 && (
           <details className="mt-1 group">
-            <summary className="text-[10px] text-white/20 cursor-pointer hover:text-white/40 transition-colors list-none flex items-center gap-1 w-fit">
+            <summary className="text-[10px] text-muted-foreground/50 cursor-pointer hover:text-muted-foreground transition-colors list-none flex items-center gap-1 w-fit">
               <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /> metadata
             </summary>
-            <pre className="mt-1 rounded-lg border border-white/6 bg-white/[0.02] p-2 text-[10px] text-white/35 overflow-x-auto">
+            <pre className="mt-1 rounded-lg border border-white/6 bg-card p-2 text-[10px] text-muted-foreground/70 overflow-x-auto">
               {JSON.stringify(entry.metadata, null, 2)}
             </pre>
           </details>
@@ -260,7 +260,7 @@ export function AuditLogPage() {
   }, [filtered])
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-1/3 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
@@ -268,8 +268,8 @@ export function AuditLogPage() {
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Audit Log</h1>
-          <p className="mt-1 text-sm text-white/40">
+          <h1 className="text-2xl font-bold text-foreground">Audit Log</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {isLoading ? '—' : `${filtered.length} events · auto-refreshes every 30s`}
           </p>
         </div>
@@ -278,7 +278,7 @@ export function AuditLogPage() {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="border border-white/10 text-white/50 hover:text-white hover:border-white/20"
+          className="border border-border text-muted-foreground hover:text-foreground hover:border-white/20"
         >
           <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
@@ -289,21 +289,21 @@ export function AuditLogPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search user, metadata…"
-            className="pl-10 w-56 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/50 h-9"
+            className="pl-10 w-56 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/50 h-9"
           />
         </div>
 
         {/* Date range */}
-        <div className="flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1">
+        <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
           {DATE_RANGE_OPTIONS.map(opt => (
             <button key={opt.key} onClick={() => setDateRange(opt.key)}
               className={`rounded-lg px-3 py-1 text-xs font-medium transition-all ${
-                dateRange === opt.key ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white/70'
+                dateRange === opt.key ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-white/70'
               }`}>
               {opt.label}
             </button>
@@ -314,7 +314,7 @@ export function AuditLogPage() {
         <select
           value={actionFilter}
           onChange={e => setActionFilter(e.target.value as AuditAction | 'all')}
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white
+          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground
                      focus:outline-none focus:border-violet-500/50 cursor-pointer"
         >
           <option value="all" className="bg-[#1a1a2e]">All Actions</option>
@@ -335,7 +335,7 @@ export function AuditLogPage() {
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all ${
                 actionFilter === a
                   ? `${cfg.bgColor} border-current ${cfg.color}`
-                  : 'border-white/8 bg-white/[0.02] text-white/30 hover:border-white/15 hover:text-white/50'
+                  : 'border-border bg-card text-muted-foreground/70 hover:border-white/15 hover:text-muted-foreground'
               }`}>
               <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
               {cfg.label}
@@ -347,7 +347,7 @@ export function AuditLogPage() {
 
       {/* Timeline */}
       {isLoading ? (
-        <Card className="border-white/8 bg-white/[0.03] p-6 space-y-6">
+        <Card className="border-border bg-card p-6 space-y-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="flex gap-4">
               <Skeleton className="h-8 w-8 rounded-full bg-white/10 shrink-0" />
@@ -371,10 +371,10 @@ export function AuditLogPage() {
           </button>
         </Card>
       ) : !filtered.length ? (
-        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
-          <Shield className="mx-auto mb-4 h-12 w-12 text-white/15" />
-          <h3 className="text-base font-semibold text-white/40">No audit events</h3>
-          <p className="mt-1 text-sm text-white/25">
+        <Card className="border-border bg-card p-12 text-center">
+          <Shield className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-base font-semibold text-muted-foreground">No audit events</h3>
+          <p className="mt-1 text-sm text-muted-foreground/50">
             {search ? 'No matching events for your search.' : 'No activity recorded in this time period.'}
           </p>
         </Card>
@@ -385,11 +385,11 @@ export function AuditLogPage() {
               {/* Date separator */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-px flex-1 bg-white/6" />
-                <span className="text-xs font-medium text-white/25 px-2">{group.date}</span>
+                <span className="text-xs font-medium text-muted-foreground/50 px-2">{group.date}</span>
                 <div className="h-px flex-1 bg-white/6" />
               </div>
 
-              <Card className="border-white/8 bg-white/[0.03] px-5 py-4">
+              <Card className="border-border bg-card px-5 py-4">
                 {group.entries.map((entry, idx) => (
                   <AuditRow
                     key={entry.id}
@@ -404,7 +404,7 @@ export function AuditLogPage() {
 
           {/* Load more notice */}
           {(entries?.length ?? 0) >= PAGE_SIZE && (
-            <p className="text-center text-xs text-white/20 py-2">
+            <p className="text-center text-xs text-muted-foreground/50 py-2">
               Showing the most recent {PAGE_SIZE} events. Use the date range filter to narrow results.
             </p>
           )}

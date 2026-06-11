@@ -85,7 +85,7 @@ export function NewTenantPage() {
   })
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 left-1/3 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
@@ -94,12 +94,12 @@ export function NewTenantPage() {
       <div className="mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white/70 transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <h1 className="text-2xl font-bold text-white">Add New Tenant</h1>
-        <p className="mt-1 text-sm text-white/40">Register a new tenant. A lease can be created after.</p>
+        <h1 className="text-2xl font-bold text-foreground">Add New Tenant</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Register a new tenant. A lease can be created after.</p>
       </div>
 
       <div className="max-w-2xl">
@@ -107,15 +107,15 @@ export function NewTenantPage() {
           <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-6">
 
             {/* Personal Info */}
-            <Card className="border-white/8 bg-white/[0.03] p-6">
+            <Card className="border-border bg-card p-6">
               <SectionHeader icon={User} title="Personal Information" />
               <div className="space-y-4">
                 <FormField control={form.control} name="full_name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">Full Name <span className="text-red-400">*</span></FormLabel>
+                    <FormLabel className="text-foreground">Full Name <span className="text-red-400">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="As per NRIC / passport"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                         {...field} />
                     </FormControl>
                     <FormMessage />
@@ -125,12 +125,12 @@ export function NewTenantPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="nric_passport" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">NRIC / Passport No. <span className="text-white/25">(optional)</span></FormLabel>
+                      <FormLabel className="text-muted-foreground">NRIC / Passport No. <span className="text-muted-foreground/50">(optional)</span></FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
+                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                           <Input placeholder="e.g. 901234-12-5678"
-                            className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                            className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                             {...field} />
                         </div>
                       </FormControl>
@@ -140,16 +140,16 @@ export function NewTenantPage() {
 
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">Phone Number <span className="text-white/25">(optional)</span></FormLabel>
+                      <FormLabel className="text-muted-foreground">Phone Number <span className="text-muted-foreground/50">(optional)</span></FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                           <Input placeholder="+60123456789"
-                            className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                            className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                             {...field} />
                         </div>
                       </FormControl>
-                      <FormDescription className="text-white/25 text-xs">Include country code: +60…</FormDescription>
+                      <FormDescription className="text-muted-foreground/50 text-xs">Include country code: +60…</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -158,17 +158,17 @@ export function NewTenantPage() {
             </Card>
 
             {/* Emergency Contact */}
-            <Card className="border-white/8 bg-white/[0.03] p-6">
+            <Card className="border-border bg-card p-6">
               <SectionHeader icon={AlertCircle} title="Emergency Contact" />
-              <p className="text-xs text-white/25 mb-4">Optional — but strongly recommended.</p>
+              <p className="text-xs text-muted-foreground/50 mb-4">Optional — but strongly recommended.</p>
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="emergency_name" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">Contact Name</FormLabel>
+                      <FormLabel className="text-muted-foreground">Contact Name</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. Ahmad bin Ibrahim"
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                           {...field} />
                       </FormControl>
                     </FormItem>
@@ -176,10 +176,10 @@ export function NewTenantPage() {
 
                   <FormField control={form.control} name="emergency_relation" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white/60">Relationship</FormLabel>
+                      <FormLabel className="text-muted-foreground">Relationship</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. Father, Spouse, Sibling"
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                           {...field} />
                       </FormControl>
                     </FormItem>
@@ -188,12 +188,12 @@ export function NewTenantPage() {
 
                 <FormField control={form.control} name="emergency_phone" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/60">Emergency Phone</FormLabel>
+                    <FormLabel className="text-muted-foreground">Emergency Phone</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/25" />
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                         <Input placeholder="+60198765432"
-                          className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                          className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                           {...field} />
                       </div>
                     </FormControl>
@@ -203,13 +203,13 @@ export function NewTenantPage() {
             </Card>
 
             {/* Notes */}
-            <Card className="border-white/8 bg-white/[0.03] p-6">
+            <Card className="border-border bg-card p-6">
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Additional Notes <span className="text-white/25">(optional)</span></FormLabel>
+                  <FormLabel className="text-muted-foreground">Additional Notes <span className="text-muted-foreground/50">(optional)</span></FormLabel>
                   <FormControl>
                     <Input placeholder="Any special notes about this tenant…"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                       {...field} />
                   </FormControl>
                 </FormItem>
@@ -220,13 +220,13 @@ export function NewTenantPage() {
 
             {/* Actions */}
             <div className="flex items-center justify-between">
-              <Button type="button" variant="ghost" onClick={() => navigate(-1)} className="text-white/40 hover:text-white">
+              <Button type="button" variant="ghost" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={mutation.isPending}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold px-8 shadow-lg shadow-violet-500/20"
+                className="bg-primary text-primary-foreground font-semibold px-8 shadow-lg shadow-violet-500/20"
               >
                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {mutation.isPending ? 'Saving…' : 'Add Tenant'}

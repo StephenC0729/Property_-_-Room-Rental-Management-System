@@ -20,6 +20,9 @@ import { Separator } from '@/components/ui/separator'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import type { UserProfile, UserRole } from '@/types'
 
@@ -109,24 +112,24 @@ function RemoveDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-sm">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-red-400 flex items-center gap-2">
             <UserX className="h-5 w-5" /> Revoke Access
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1 text-sm">
-          <p className="text-white/70">Remove <span className="font-semibold text-white">{member?.full_name}</span> from the system?</p>
-          <div className="rounded-lg border border-white/8 bg-white/[0.03] p-3 text-xs text-white/40 space-y-1">
+          <p className="text-white/70">Remove <span className="font-semibold text-foreground">{member?.full_name}</span> from the system?</p>
+          <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground space-y-1">
             <p>· Their profile will be deleted from PRMS</p>
             <p>· Their Supabase Auth account will remain (delete it manually if needed)</p>
             <p>· They will lose all access immediately</p>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-white/40 hover:text-white">Cancel</Button>
+          <Button variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground">Cancel</Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}
-            className="bg-red-600 hover:bg-red-500 text-white">
+            className="bg-red-600 hover:bg-red-500 text-foreground">
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Revoke Access
           </Button>
@@ -141,7 +144,6 @@ function RemoveDialog({
 function MemberRow({ member, currentUserId }: { member: UserProfile; currentUserId: string }) {
   const queryClient = useQueryClient()
   const [showRemove, setShowRemove] = useState(false)
-  const [editingRole, setEditingRole] = useState(false)
   const isSelf = member.id === currentUserId
   const cfg = ROLE_CONFIG[member.role]
   const initials = member.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -163,64 +165,59 @@ function MemberRow({ member, currentUserId }: { member: UserProfile; currentUser
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] })
       toast.success(`Role updated for ${member.full_name}.`)
-      setEditingRole(false)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 
   return (
-    <div className="flex items-center gap-4 py-4 border-b border-white/5 last:border-0">
+    <div className="flex items-center gap-4 py-4 border-b border-border/50 last:border-0">
       {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-sm font-bold text-violet-300">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
         {initials}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-white">{member.full_name}</p>
-          {isSelf && <Badge className="text-[10px] px-1.5 h-4 bg-white/5 text-white/30 border-white/10">You</Badge>}
+          <p className="text-sm font-semibold text-foreground">{member.full_name}</p>
+          {isSelf && <Badge className="text-[10px] px-1.5 h-4 bg-muted text-muted-foreground/70 border-border">You</Badge>}
         </div>
-        <p className="text-xs text-white/30 mt-0.5">{cfg.description}</p>
+        <p className="text-xs text-muted-foreground/70 mt-0.5">{cfg.description}</p>
       </div>
 
       {/* Role selector */}
       <div className="shrink-0">
-        {editingRole ? (
-          <div className="flex items-center gap-1">
-            <select
-              defaultValue={member.role}
-              onChange={e => roleMutation.mutate(e.target.value as UserRole)}
-              disabled={roleMutation.isPending}
-              className="rounded-lg border border-white/15 bg-white/[0.06] px-2 py-1 text-xs text-white
-                         focus:outline-none focus:border-violet-500/50 cursor-pointer"
-            >
-              {ROLES.map(r => (
-                <option key={r} value={r} className="bg-[#1a1a2e]">{ROLE_CONFIG[r].label}</option>
-              ))}
-            </select>
-            <Button size="icon" variant="ghost" onClick={() => setEditingRole(false)}
-              className="h-7 w-7 text-white/30 hover:text-white">
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Badge className={`text-xs ${cfg.cls}`}>{cfg.label}</Badge>
-            {!isSelf && (
-              <Button size="icon" variant="ghost" onClick={() => setEditingRole(true)}
-                className="h-7 w-7 text-white/20 hover:text-white/60">
-                <ChevronDown className="h-3.5 w-3.5" />
+        {!isSelf ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-2 flex items-center gap-2 hover:bg-muted border border-transparent hover:border-border transition-colors">
+                <Badge className={`text-[10px] px-1.5 h-5 ${cfg.cls}`}>{cfg.label}</Badge>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[160px]">
+              {ROLES.map(r => (
+                <DropdownMenuItem 
+                  key={r} 
+                  className="text-xs py-1.5 cursor-pointer"
+                  onClick={() => roleMutation.mutate(r)}
+                  disabled={roleMutation.isPending}
+                >
+                  <div className={`w-2 h-2 rounded-full mr-2 ${ROLE_CONFIG[r].cls.split(' ')[0]}`} />
+                  {ROLE_CONFIG[r].label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Badge className={`text-xs ${cfg.cls}`}>{cfg.label}</Badge>
         )}
       </div>
 
       {/* Remove button */}
       {!isSelf && (
         <Button size="icon" variant="ghost" onClick={() => setShowRemove(true)}
-          className="h-7 w-7 text-white/15 hover:text-red-400 hover:bg-red-500/10 shrink-0">
+          className="h-7 w-7 text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10 shrink-0">
           <UserX className="h-3.5 w-3.5" />
         </Button>
       )}
@@ -275,7 +272,7 @@ function MyAccountSection() {
   })
 
   return (
-    <Card className="border-white/8 bg-white/[0.03] p-6 space-y-5">
+    <Card className="border-border bg-card p-6 space-y-5">
       <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15">
           <User className="h-3.5 w-3.5 text-violet-400" />
@@ -288,9 +285,9 @@ function MyAccountSection() {
         <form onSubmit={nameForm.handleSubmit(v => nameMutation.mutate(v))} className="flex items-end gap-3">
           <FormField control={nameForm.control} name="full_name" render={({ field }) => (
             <FormItem className="flex-1">
-              <FormLabel className="text-white/50 text-xs">Display Name</FormLabel>
+              <FormLabel className="text-muted-foreground text-xs">Display Name</FormLabel>
               <FormControl>
-                <Input className="bg-white/5 border-white/10 text-white focus:border-violet-500/60 h-9" {...field} />
+                <Input className="bg-muted border-border text-foreground focus:border-violet-500/60 h-9" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -308,11 +305,11 @@ function MyAccountSection() {
       {/* Password */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-white/60 flex items-center gap-1.5">
+          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
             <Key className="h-3.5 w-3.5 text-violet-400" /> Password
           </p>
           <Button size="sm" variant="ghost" onClick={() => setShowPwForm(v => !v)}
-            className="text-xs text-white/40 hover:text-white h-7">
+            className="text-xs text-muted-foreground hover:text-foreground h-7">
             {showPwForm ? 'Cancel' : 'Change Password'}
           </Button>
         </div>
@@ -322,10 +319,10 @@ function MyAccountSection() {
             <form onSubmit={pwForm.handleSubmit(v => pwMutation.mutate(v))} className="space-y-3">
               <FormField control={pwForm.control} name="new_password" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/50 text-xs">New Password</FormLabel>
+                  <FormLabel className="text-muted-foreground text-xs">New Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="Min. 8 characters"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60 h-9"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60 h-9"
                       {...field} />
                   </FormControl>
                   <FormMessage />
@@ -333,10 +330,10 @@ function MyAccountSection() {
               )} />
               <FormField control={pwForm.control} name="confirm_password" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/50 text-xs">Confirm Password</FormLabel>
+                  <FormLabel className="text-muted-foreground text-xs">Confirm Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="Repeat new password"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60 h-9"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60 h-9"
                       {...field} />
                   </FormControl>
                   <FormMessage />
@@ -367,21 +364,21 @@ export function SettingsPage() {
   }, {} as Record<UserRole, number>) ?? {}
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
       </div>
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="mt-1 text-sm text-white/40">User management and account settings</p>
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">User management and account settings</p>
       </div>
 
       <div className="max-w-2xl space-y-6">
 
         {/* Team Members */}
-        <Card className="border-white/8 bg-white/[0.03] p-6">
+        <Card className="border-border bg-card p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15">
@@ -411,7 +408,7 @@ export function SettingsPage() {
               ))}
             </div>
           ) : !members?.length ? (
-            <p className="text-sm text-white/30 text-center py-4">No team members found.</p>
+            <p className="text-sm text-muted-foreground/70 text-center py-4">No team members found.</p>
           ) : (
             <div>
               {members.map(m => (
@@ -428,8 +425,8 @@ export function SettingsPage() {
             <div className="space-y-1.5">
               <p className="text-sm font-medium text-blue-300">Adding a new team member</p>
               <ol className="text-xs text-blue-300/70 space-y-1.5 list-decimal list-inside">
-                <li>Go to <span className="text-white/60 font-medium">Supabase Dashboard → Authentication → Users</span></li>
-                <li>Click <span className="text-white/60 font-medium">"Invite user"</span> and enter their email</li>
+                <li>Go to <span className="text-muted-foreground font-medium">Supabase Dashboard → Authentication → Users</span></li>
+                <li>Click <span className="text-muted-foreground font-medium">"Invite user"</span> and enter their email</li>
                 <li>They will receive an email invite to set their password</li>
                 <li>Once they sign in, their profile will appear in the list above</li>
                 <li>Assign their role using the dropdown on this page</li>
@@ -439,7 +436,7 @@ export function SettingsPage() {
         </Card>
 
         {/* Role reference */}
-        <Card className="border-white/8 bg-white/[0.03] p-6">
+        <Card className="border-border bg-card p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15">
               <Shield className="h-3.5 w-3.5 text-violet-400" />
@@ -455,7 +452,7 @@ export function SettingsPage() {
                 operator:    ['View property room matrix', 'Log rent payments', 'Send WhatsApp receipts'],
               }
               return (
-                <div key={role} className="flex gap-4 rounded-xl border border-white/6 bg-white/[0.02] p-3.5">
+                <div key={role} className="flex gap-4 rounded-xl border border-white/6 bg-card p-3.5">
                   <Badge className={`text-xs shrink-0 h-fit mt-0.5 ${cfg.cls}`}>{cfg.label}</Badge>
                   <ul className="space-y-1">
                     {permissions[role].map(p => (
@@ -481,7 +478,7 @@ export function SettingsPage() {
               <p className="text-sm font-medium text-red-300">Danger Zone</p>
               <p className="text-xs text-red-300/60 mt-1">
                 To permanently delete a Supabase Auth account, go to{' '}
-                <span className="text-white/50 font-medium">Dashboard → Authentication → Users</span>{' '}
+                <span className="text-muted-foreground font-medium">Dashboard → Authentication → Users</span>{' '}
                 and delete from there. Removing a member here only revokes their PRMS access.
               </p>
             </div>

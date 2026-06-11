@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
-  Building2, Home, AlertCircle, CheckCircle2, Clock,
+  Building2, Home, AlertCircle, CheckCircle2,
   TrendingUp, Wallet, CalendarX2, Users, ClipboardList,
   Settings, ArrowRight, CircleDot, Wrench,
 } from 'lucide-react'
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getCurrentBillingMonth, formatBillingMonth } from '@/utils/whatsapp'
 import type { Property } from '@/types'
@@ -33,7 +34,7 @@ function useBillingSummary() {
 }
 
 function useMonthlyRevenue() {
-  const billingMonth = getCurrentBillingMonth().toISOString().slice(0, 10).replace(/-\d{2}$/, '-01')
+  const billingMonth = format(getCurrentBillingMonth(), 'yyyy-MM-dd')
   return useQuery({
     queryKey: ['dashboard', 'monthly-revenue', billingMonth],
     queryFn: async () => {
@@ -72,8 +73,8 @@ function useExpiringLeases() {
         .from('leases')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
-        .lte('expiry_date', in30.toISOString().slice(0, 10))
-        .gte('expiry_date', today.toISOString().slice(0, 10))
+        .lte('expiry_date', format(in30, 'yyyy-MM-dd'))
+        .gte('expiry_date', format(today, 'yyyy-MM-dd'))
       if (error) throw error
       return count ?? 0
     },
@@ -127,21 +128,24 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, color, bgColor, isLoading, sublabel }: StatCardProps) {
   return (
-    <Card className="relative overflow-hidden border-white/8 bg-white/[0.03] p-5 backdrop-blur-sm">
-      <div className="flex items-start justify-between">
+    <Card className="group relative overflow-hidden p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-border dark:bg-card">
+      <div className="flex items-start justify-between relative z-10">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
           {isLoading ? (
-            <Skeleton className="mt-2 h-8 w-24 bg-white/10" />
+            <Skeleton className="mt-2 h-8 w-24" />
           ) : (
             <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
           )}
-          {sublabel && <p className="mt-0.5 text-xs text-white/30">{sublabel}</p>}
+          {sublabel && <p className="mt-1 text-xs text-muted-foreground/70">{sublabel}</p>}
         </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bgColor}`}>
-          <Icon className={`h-5 w-5 ${color}`} />
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${bgColor} border border-border group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className={`h-6 w-6 ${color}`} />
         </div>
       </div>
+      
+      {/* Subtle bottom gradient glow on hover (dark mode only) */}
+      <div className="absolute inset-x-0 -bottom-px h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 dark:block hidden" />
     </Card>
   )
 }
@@ -155,16 +159,18 @@ function QuickAction({ to, icon: Icon, label, description, color }: {
 }) {
   return (
     <Link to={to}>
-      <Card className="group flex items-center gap-4 border-white/8 bg-white/[0.03] p-4 backdrop-blur-sm
-                       hover:bg-white/[0.06] hover:border-white/15 transition-all duration-200 cursor-pointer">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
-          <Icon className="h-5 w-5 text-white" />
+      <Card className="group relative overflow-hidden flex items-center gap-4 p-4 transition-all duration-300 hover:shadow-md cursor-pointer dark:bg-card dark:border-border">
+        {/* Subtle spotlight effect */}
+        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-r ${color.replace('bg-', 'from-').replace('/30', '')} to-transparent`} />
+        
+        <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${color} border border-border`}>
+          <Icon className="h-5 w-5 text-foreground dark:text-foreground" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">{label}</p>
-          <p className="text-xs text-white/40 truncate">{description}</p>
+        <div className="relative flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{label}</p>
+          <p className="text-xs text-muted-foreground truncate transition-colors">{description}</p>
         </div>
-        <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-white/50 transition-colors" />
+        <ArrowRight className="relative h-4 w-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
       </Card>
     </Link>
   )
@@ -193,15 +199,15 @@ function OperatorDashboard() {
 
       {/* Property grid */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white/50 uppercase tracking-wider">Properties</h2>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Properties</h2>
         {propsLoading || statsLoading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl bg-white/10" />)}
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
           </div>
         ) : !properties?.length ? (
-          <Card className="border-white/8 bg-white/[0.03] p-8 text-center">
-            <Building2 className="mx-auto mb-3 h-10 w-10 text-white/20" />
-            <p className="text-sm text-white/40">No properties set up yet.</p>
+          <Card className="p-8 text-center border-dashed">
+            <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No properties set up yet.</p>
           </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -210,36 +216,35 @@ function OperatorDashboard() {
               const alertCount = stats.overdue + stats.partial
               return (
                 <Link key={property.id} to={`/properties/${property.id}`}>
-                  <Card className="group border-white/8 bg-white/[0.03] p-5 backdrop-blur-sm
-                                   hover:bg-white/[0.06] hover:border-white/15 transition-all duration-200 cursor-pointer">
+                  <Card className="group p-5 transition-all duration-200 hover:shadow-md cursor-pointer dark:border-border dark:bg-card">
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/20">
-                        <Building2 className="h-4 w-4 text-violet-400" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Building2 className="h-4 w-4 text-primary" />
                       </div>
                       {alertCount > 0 && (
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/20 text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           {alertCount} overdue
                         </Badge>
                       )}
                     </div>
-                    <p className="font-semibold text-white">{property.name}</p>
-                    <p className="text-xs text-white/30 mt-0.5 truncate">{property.address}</p>
+                    <p className="font-semibold text-foreground">{property.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{property.address}</p>
                     <div className="mt-4 flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1 text-emerald-400">
+                      <span className="flex items-center gap-1 text-emerald-500">
                         <CheckCircle2 className="h-3 w-3" /> {stats.paid} paid
                       </span>
                       {stats.overdue > 0 && (
-                        <span className="flex items-center gap-1 text-red-400">
+                        <span className="flex items-center gap-1 text-destructive">
                           <AlertCircle className="h-3 w-3" /> {stats.overdue} overdue
                         </span>
                       )}
                       {stats.partial > 0 && (
-                        <span className="flex items-center gap-1 text-orange-400">
+                        <span className="flex items-center gap-1 text-orange-500">
                           <CircleDot className="h-3 w-3" /> {stats.partial} partial
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-white/20 group-hover:text-white/40 transition-colors">
+                    <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground/50 group-hover:text-primary transition-colors">
                       View rooms <ArrowRight className="h-3 w-3" />
                     </div>
                   </Card>
@@ -271,8 +276,8 @@ function AdminDashboard() {
           label="Total Rooms"
           value={billing.isLoading ? '—' : totalRooms}
           icon={Home}
-          color="text-white"
-          bgColor="bg-white/10"
+          color="text-foreground"
+          bgColor="bg-muted"
           isLoading={billing.isLoading}
           sublabel="across all properties"
         />
@@ -289,8 +294,8 @@ function AdminDashboard() {
           label="Overdue / Partial"
           value={billing.isLoading ? '—' : (billing.data?.overdue ?? 0) + (billing.data?.partial ?? 0)}
           icon={AlertCircle}
-          color={(billing.data?.overdue ?? 0) > 0 ? 'text-red-400' : 'text-white/40'}
-          bgColor={(billing.data?.overdue ?? 0) > 0 ? 'bg-red-500/20' : 'bg-white/10'}
+          color={(billing.data?.overdue ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}
+          bgColor={(billing.data?.overdue ?? 0) > 0 ? 'bg-destructive/10' : 'bg-muted'}
           isLoading={billing.isLoading}
           sublabel={`${billing.data?.overdue ?? 0} overdue, ${billing.data?.partial ?? 0} partial`}
         />
@@ -307,8 +312,8 @@ function AdminDashboard() {
           label="Outstanding Balance"
           value={outstanding.isLoading ? '—' : formatRinggit(outstanding.data ?? 0)}
           icon={Wallet}
-          color={(outstanding.data ?? 0) > 0 ? 'text-orange-400' : 'text-white/40'}
-          bgColor={(outstanding.data ?? 0) > 0 ? 'bg-orange-500/20' : 'bg-white/10'}
+          color={(outstanding.data ?? 0) > 0 ? 'text-orange-500' : 'text-muted-foreground'}
+          bgColor={(outstanding.data ?? 0) > 0 ? 'bg-orange-500/10' : 'bg-muted'}
           isLoading={outstanding.isLoading}
           sublabel="unpaid + partial balances"
         />
@@ -316,42 +321,75 @@ function AdminDashboard() {
           label="Leases Expiring"
           value={expiring.isLoading ? '—' : expiring.data ?? 0}
           icon={CalendarX2}
-          color={(expiring.data ?? 0) > 0 ? 'text-yellow-400' : 'text-white/40'}
-          bgColor={(expiring.data ?? 0) > 0 ? 'bg-yellow-500/20' : 'bg-white/10'}
+          color={(expiring.data ?? 0) > 0 ? 'text-yellow-500' : 'text-muted-foreground'}
+          bgColor={(expiring.data ?? 0) > 0 ? 'bg-yellow-500/10' : 'bg-muted'}
           isLoading={expiring.isLoading}
           sublabel="within the next 30 days"
         />
       </div>
 
-      {/* Status breakdown */}
+      {/* Status breakdown - Segmented Progress Bar */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white/50 uppercase tracking-wider">Room Status Breakdown</h2>
-        <Card className="border-white/8 bg-white/[0.03] p-5 backdrop-blur-sm">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            {[
-              { label: 'Paid', value: billing.data?.paid ?? 0, color: 'text-emerald-400', dot: 'bg-emerald-400' },
-              { label: 'Overdue', value: billing.data?.overdue ?? 0, color: 'text-red-400', dot: 'bg-red-400' },
-              { label: 'Partial', value: billing.data?.partial ?? 0, color: 'text-orange-400', dot: 'bg-orange-400' },
-              { label: 'Vacant', value: billing.data?.vacant ?? 0, color: 'text-white/40', dot: 'bg-white/30' },
-              { label: 'Maintenance', value: billing.data?.maintenance ?? 0, color: 'text-yellow-400', dot: 'bg-yellow-400' },
-            ].map(item => (
-              <div key={item.label} className="text-center">
-                <div className={`text-2xl font-bold ${item.color}`}>
-                  {billing.isLoading ? <Skeleton className="mx-auto h-7 w-10 bg-white/10" /> : item.value}
-                </div>
-                <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-white/40">
-                  <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} />
-                  {item.label}
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Room Status Breakdown</h2>
+        <Card className="p-6 shadow-sm dark:bg-card dark:border-border">
+          {billing.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-full rounded-full" />
+              <div className="flex justify-between">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-4 w-16" />)}
+              </div>
+            </div>
+          ) : (() => {
+            const items = [
+              { label: 'Paid', value: billing.data?.paid ?? 0, color: 'text-emerald-500', barColor: 'bg-emerald-500', dot: 'bg-emerald-500' },
+              { label: 'Overdue', value: billing.data?.overdue ?? 0, color: 'text-destructive', barColor: 'bg-destructive', dot: 'bg-destructive' },
+              { label: 'Partial', value: billing.data?.partial ?? 0, color: 'text-orange-500', barColor: 'bg-orange-500', dot: 'bg-orange-500' },
+              { label: 'Vacant', value: billing.data?.vacant ?? 0, color: 'text-muted-foreground', barColor: 'bg-muted', dot: 'bg-muted-foreground/30' },
+              { label: 'Maintenance', value: billing.data?.maintenance ?? 0, color: 'text-yellow-500', barColor: 'bg-yellow-500', dot: 'bg-yellow-500' },
+            ]
+            const total = items.reduce((sum, item) => sum + item.value, 0)
+            
+            return (
+              <div className="space-y-6">
+                {/* Visual Bar */}
+                {total > 0 ? (
+                  <div className="h-3 w-full flex rounded-full overflow-hidden bg-muted shadow-inner border border-border">
+                    {items.map(item => item.value > 0 && (
+                      <div 
+                        key={item.label} 
+                        style={{ width: `${(item.value / total) * 100}%` }} 
+                        className={`${item.barColor} transition-all duration-1000 ease-out hover:brightness-110 cursor-pointer border-r border-background last:border-r-0`} 
+                        title={`${item.label}: ${item.value}`} 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-3 w-full rounded-full bg-muted border border-border" />
+                )}
+
+                {/* Legend & Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                  {items.map(item => (
+                    <div key={item.label} className="text-center group">
+                      <div className={`text-2xl font-bold ${item.color} group-hover:scale-110 transition-transform`}>
+                        {item.value}
+                      </div>
+                      <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium">
+                        <span className={`h-2 w-2 rounded-full ${item.dot} shadow-[0_0_8px_currentColor]`} />
+                        {item.label}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )
+          })()}
         </Card>
       </div>
 
       {/* Quick actions */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white/50 uppercase tracking-wider">Quick Actions</h2>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           <QuickAction to="/properties" icon={Building2} label="View Room Matrix" description="Check all properties and log payments" color="bg-violet-500/30" />
           <QuickAction to="/tenants/new" icon={Users} label="Add New Tenant" description="Register a new tenant and lease" color="bg-indigo-500/30" />
@@ -373,7 +411,7 @@ function SuperAdminDashboard() {
 
       {/* System panel */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white/50 uppercase tracking-wider">System</h2>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">System</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           <QuickAction to="/audit-log" icon={ClipboardList} label="Audit Log" description="Review all system actions and changes" color="bg-slate-500/30" />
           <QuickAction to="/settings" icon={Settings} label="User Management" description="Manage team accounts and access levels" color="bg-zinc-500/30" />
@@ -397,29 +435,29 @@ export function DashboardPage() {
   })()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute top-0 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-600/10 blur-[100px]" />
-        <div className="absolute bottom-0 right-1/4 h-[300px] w-[300px] rounded-full bg-indigo-600/10 blur-[80px]" />
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 relative">
+      {/* Ambient glow (dark mode only) */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden dark:block hidden">
+        <div className="absolute top-0 left-1/4 h-[500px] w-[500px] rounded-full bg-violet-600/10 blur-[120px] animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute bottom-0 right-1/4 h-[400px] w-[400px] rounded-full bg-indigo-600/10 blur-[100px] animate-[pulse_10s_ease-in-out_infinite_reverse]" />
       </div>
 
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex items-start justify-between relative z-10">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             {greeting}, {profile?.full_name.split(' ')[0]} 👋
           </h1>
-          <p className="mt-1 text-sm text-white/40">
+          <p className="mt-1 text-sm text-muted-foreground">
             {currentMonth} · {role === 'operator' ? 'Operator' : role === 'admin' ? 'Admin' : 'Super Admin'} Dashboard
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300 capitalize text-xs">
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 capitalize text-xs">
             {role?.replace('_', ' ')}
           </Badge>
           {(role === 'admin' || role === 'super_admin') && (
-            <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-500 text-white h-8 text-xs">
+            <Button asChild size="sm" className="h-8 text-xs">
               <Link to="/properties">
                 <Wrench className="mr-1.5 h-3.5 w-3.5" />
                 Room Matrix

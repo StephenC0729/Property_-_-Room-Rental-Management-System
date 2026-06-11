@@ -120,9 +120,9 @@ function PropertyDialog({ open, onClose, editProperty }: PropertyDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="border-white/10 bg-[#111118] text-white sm:max-w-md">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">
+          <DialogTitle className="text-foreground">
             {editProperty ? 'Edit Property' : 'Add New Property'}
           </DialogTitle>
         </DialogHeader>
@@ -134,11 +134,11 @@ function PropertyDialog({ open, onClose, editProperty }: PropertyDialogProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Property Name</FormLabel>
+                  <FormLabel className="text-muted-foreground">Property Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. House 1"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                       {...field}
                     />
                   </FormControl>
@@ -151,11 +151,11 @@ function PropertyDialog({ open, onClose, editProperty }: PropertyDialogProps) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/60">Full Address</FormLabel>
+                  <FormLabel className="text-muted-foreground">Full Address</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. No. 12, Jalan Bunga, Tawau, Sabah"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/60"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
                       {...field}
                     />
                   </FormControl>
@@ -164,7 +164,7 @@ function PropertyDialog({ open, onClose, editProperty }: PropertyDialogProps) {
               )}
             />
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={onClose} className="text-white/50 hover:text-white">
+              <Button type="button" variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground">
                 Cancel
               </Button>
               <Button
@@ -200,7 +200,7 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
     : 0
 
   return (
-    <Card className="group relative overflow-hidden border-white/8 bg-white/[0.03] backdrop-blur-sm
+    <Card className="group relative overflow-hidden border-border bg-card backdrop-blur-sm
                      hover:bg-white/[0.05] hover:border-white/12 transition-all duration-200">
       {/* Subtle top accent */}
       <div className={`absolute inset-x-0 top-0 h-[2px] ${alertCount > 0 ? 'bg-red-500/60' : 'bg-violet-500/40'}`} />
@@ -213,15 +213,15 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
               <Building2 className="h-5 w-5 text-violet-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white leading-tight">{property.name}</h3>
-              <p className="text-xs text-white/35 mt-0.5 max-w-[200px] truncate">{property.address}</p>
+              <h3 className="font-semibold text-foreground leading-tight">{property.name}</h3>
+              <p className="text-xs text-muted-foreground/70 mt-0.5 max-w-[200px] truncate">{property.address}</p>
             </div>
           </div>
           {isAdmin && (
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-white/20 hover:text-white/60 opacity-0 group-hover:opacity-100 transition-all"
+              className="h-7 w-7 text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
               onClick={e => { e.preventDefault(); onEdit(property) }}
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -242,8 +242,8 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
             {/* Occupancy bar */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-white/30">Occupancy</span>
-                <span className="text-xs font-medium text-white/60">{occupancyPct}%</span>
+                <span className="text-xs text-muted-foreground/70">Occupancy</span>
+                <span className="text-xs font-medium text-muted-foreground">{occupancyPct}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div
@@ -271,14 +271,14 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
                 </span>
               )}
               {stats.vacant > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/30">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground/70">
                   <Home className="h-3 w-3" /> {stats.vacant} vacant
                 </span>
               )}
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-white/5">
-              <span className="text-xs text-white/25">{stats.total} total rooms</span>
+              <span className="text-xs text-muted-foreground/50">{stats.total} total rooms</span>
               <Link
                 to={`/properties/${property.id}`}
                 className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium"
@@ -289,15 +289,15 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
           </div>
         ) : (
           /* No rooms added yet */
-          <div className="flex flex-col items-center justify-center gap-3 py-4 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
-            <Home className="h-7 w-7 text-white/15" />
+          <div className="flex flex-col items-center justify-center gap-3 py-4 rounded-xl border border-dashed border-border bg-white/[0.01]">
+            <Home className="h-7 w-7 text-muted-foreground/50" />
             <div className="text-center">
-              <p className="text-xs font-medium text-white/30">No rooms added yet</p>
-              <p className="text-[11px] text-white/20 mt-0.5">Click below to add your first room</p>
+              <p className="text-xs font-medium text-muted-foreground/70">No rooms added yet</p>
+              <p className="text-[11px] text-muted-foreground/50 mt-0.5">Click below to add your first room</p>
             </div>
             <Link
               to={`/properties/${property.id}`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-600 px-3 py-1.5 text-xs font-medium text-foreground transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Add Rooms
             </Link>
@@ -328,7 +328,7 @@ export function PropertiesPage() {
   }, 0) ?? 0
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-1/4 h-[400px] w-[400px] rounded-full bg-violet-600/8 blur-[120px]" />
@@ -337,8 +337,8 @@ export function PropertiesPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Properties</h1>
-          <p className="mt-1 text-sm text-white/40">
+          <h1 className="text-2xl font-bold text-foreground">Properties</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {isLoading ? '—' : `${properties?.length ?? 0} properties`}
             {totalOverdue > 0 && (
               <span className="ml-2 text-red-400">· {totalOverdue} need attention</span>
@@ -360,14 +360,14 @@ export function PropertiesPage() {
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-52 rounded-xl bg-white/5" />
+            <Skeleton key={i} className="h-52 rounded-xl bg-muted" />
           ))}
         </div>
       ) : !properties?.length ? (
-        <Card className="border-white/8 bg-white/[0.03] p-12 text-center">
-          <Building2 className="mx-auto mb-4 h-12 w-12 text-white/15" />
-          <h3 className="text-lg font-semibold text-white/40">No properties yet</h3>
-          <p className="mt-1 text-sm text-white/25">
+        <Card className="border-border bg-card p-12 text-center">
+          <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-lg font-semibold text-muted-foreground">No properties yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground/50">
             {isAdmin() ? 'Click "Add Property" to set up your first house.' : 'Ask your admin to add properties.'}
           </p>
         </Card>
@@ -388,7 +388,7 @@ export function PropertiesPage() {
 
       {/* Legend */}
       {(properties?.length ?? 0) > 0 && (
-        <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-white/25">
+        <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-muted-foreground/50">
           <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Paid</span>
           <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Overdue</span>
           <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-400" /> Partial</span>

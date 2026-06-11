@@ -41,7 +41,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Ambient background glows */}
       <div className="pointer-events-none absolute inset-0">
@@ -65,18 +65,18 @@ export function LoginPage() {
         {/* Card glow border */}
         <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
 
-        <div className="relative rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/8 p-8 shadow-2xl">
+        <div className="relative rounded-2xl bg-card backdrop-blur-xl border border-border p-8 shadow-2xl">
 
           {/* Logo & Brand */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative mb-4">
               <div className="absolute inset-0 rounded-2xl bg-violet-500/30 blur-lg" />
               <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg">
-                <Building2 className="h-7 w-7 text-white" />
+                <Building2 className="h-7 w-7 text-foreground" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">PRMS</h1>
-            <p className="mt-1 text-sm text-white/40">Property & Room Rental Management</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">PRMS</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Property & Room Rental Management</p>
           </div>
 
           {/* Form */}
@@ -84,11 +84,11 @@ export function LoginPage() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-white/60">
+              <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">
                 Email address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                 <Input
                   id="email"
                   type="email"
@@ -97,7 +97,7 @@ export function LoginPage() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/20
+                  className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50
                              focus:border-violet-500/60 focus:ring-violet-500/20 h-11"
                 />
               </div>
@@ -105,11 +105,11 @@ export function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-white/60">
+              <Label htmlFor="password" className="text-sm font-medium text-muted-foreground">
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -118,13 +118,13 @@ export function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/20
+                  className="pl-10 pr-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50
                              focus:border-violet-500/60 focus:ring-violet-500/20 h-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -146,7 +146,7 @@ export function LoginPage() {
               disabled={isLoading}
               className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600
                          hover:from-violet-500 hover:to-indigo-500
-                         text-white font-semibold shadow-lg shadow-violet-500/25
+                         text-foreground font-semibold shadow-lg shadow-violet-500/25
                          transition-all duration-200 hover:shadow-violet-500/40 hover:-translate-y-px
                          disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
             >
@@ -162,13 +162,13 @@ export function LoginPage() {
           </form>
 
           {/* Footer note */}
-          <p className="mt-6 text-center text-xs text-white/20">
+          <p className="mt-6 text-center text-xs text-muted-foreground/50">
             Access is restricted to authorised team members only.
           </p>
         </div>
 
         {/* Location tag */}
-        <p className="mt-4 text-center text-xs text-white/15">
+        <p className="mt-4 text-center text-xs text-muted-foreground/50">
           Tawau, Sabah · Kuala Lumpur
         </p>
       </div>
