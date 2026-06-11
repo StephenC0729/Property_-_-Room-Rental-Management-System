@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import {
   Users, Shield, UserX, Check, Loader2,
   Key, User, AlertTriangle, ChevronDown, Info,
@@ -10,6 +9,7 @@ import {
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
+import { nameSchema, passwordSchema, type NameFormValues, type PasswordFormValues } from '@/schemas/settings'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -47,20 +47,6 @@ const ROLE_CONFIG: Record<UserRole, { label: string; cls: string; description: s
 }
 
 const ROLES: UserRole[] = ['super_admin', 'admin', 'operator']
-
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
-const nameSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-})
-
-const passwordSchema = z.object({
-  new_password:     z.string().min(8, 'Password must be at least 8 characters'),
-  confirm_password: z.string(),
-}).refine(d => d.new_password === d.confirm_password, {
-  message: 'Passwords do not match',
-  path: ['confirm_password'],
-})
 
 // ─── Data hook ─────────────────────────────────────────────────────────────────
 
@@ -239,11 +225,8 @@ function MyAccountSection() {
   const queryClient = useQueryClient()
   const [showPwForm, setShowPwForm] = useState(false)
 
-  const nameForm = useForm({ resolver: zodResolver(nameSchema),
-    values: { full_name: profile?.full_name ?? '' } })
-
-  const pwForm = useForm({ resolver: zodResolver(passwordSchema),
-    defaultValues: { new_password: '', confirm_password: '' } })
+  const nameForm = useForm<NameFormValues>({ resolver: zodResolver(nameSchema), defaultValues: { full_name: profile?.full_name || '' } })
+  const pwForm = useForm<PasswordFormValues>({ resolver: zodResolver(passwordSchema), defaultValues: { new_password: '', confirm_password: '' } })
 
   const nameMutation = useMutation({
     mutationFn: async ({ full_name }: { full_name: string }) => {

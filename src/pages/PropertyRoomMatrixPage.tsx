@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Home, Plus } from 'lucide-react'
 import { format } from 'date-fns'
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { getCurrentBillingMonth } from '@/utils/whatsapp'
 import { Button } from '@/components/ui/button'
@@ -13,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Room, RoomBillingStatus, BillingStatus } from '@/types'
 import { useProperty } from '@/hooks/useProperty'
 import { useRoomMatrix } from '@/hooks/useRoomMatrix'
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription'
 import { statusConfig } from '@/utils/statusConfig'
 import { RoomDialog } from '@/components/rooms/RoomDialog'
 import { PaymentModal } from '@/components/rooms/PaymentModal'
@@ -31,19 +31,21 @@ export function PropertyRoomMatrixPage() {
   const { data: rooms, isLoading: roomsLoading } = useRoomMatrix(id!)
 
   // ── Realtime subscription ──────────────────────────────────────────────────
-  useEffect(() => {
-    const channel = supabase
-      .channel(`room-matrix-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_history' }, () => {
+  useRealtimeSubscription(`room-matrix-${id}`, [
+    {
+      config: { event: '*', schema: 'public', table: 'payment_history' },
+      callback: () => {
         queryClient.invalidateQueries({ queryKey: ['room-matrix', id] })
         queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `property_id=eq.${id}` }, () => {
+      }
+    },
+    {
+      config: { event: '*', schema: 'public', table: 'rooms', filter: `property_id=eq.${id}` },
+      callback: () => {
         queryClient.invalidateQueries({ queryKey: ['room-matrix', id] })
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [id, queryClient])
+      }
+    }
+  ])
 
   const counts = rooms?.reduce((acc, r) => {
     acc[r.billing_status] = (acc[r.billing_status] ?? 0) + 1

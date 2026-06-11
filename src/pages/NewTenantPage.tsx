@@ -2,29 +2,16 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { ArrowLeft, Loader2, User, Phone, CreditCard, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
+import { tenantSchema, type TenantFormValues } from '@/schemas/tenant'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const tenantSchema = z.object({
-  full_name:          z.string().min(2, 'Full name is required'),
-  nric_passport:      z.string().optional(),
-  phone:              z.string().refine(v => !v || /^\+?[0-9\s\-()]{8,20}$/.test(v), 'Enter a valid phone number').optional(),
-  emergency_name:     z.string().optional(),
-  emergency_relation: z.string().optional(),
-  emergency_phone:    z.string().optional(),
-  notes:              z.string().optional(),
-})
-type TenantFormValues = z.infer<typeof tenantSchema>
 
 // ─── Form Section ─────────────────────────────────────────────────────────────
 

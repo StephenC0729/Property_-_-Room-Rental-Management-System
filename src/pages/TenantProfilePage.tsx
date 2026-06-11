@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import {
   ArrowLeft, Pencil, Loader2, User, Phone, CreditCard,
   AlertCircle, Home, FileText, Check, X, CalendarDays,
@@ -13,6 +12,7 @@ import { format, isPast } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { useAuthStore } from '@/store/authStore'
+import { tenantSchema as editSchema, type TenantFormValues as EditFormValues } from '@/schemas/tenant'
 import { formatRinggit } from '@/utils/exportCsv'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -32,19 +32,6 @@ interface LeaseWithRoom extends Lease {
 interface TenantDetail extends Tenant {
   leases?: LeaseWithRoom[]
 }
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const editSchema = z.object({
-  full_name:          z.string().min(2, 'Full name is required'),
-  nric_passport:      z.string().optional(),
-  phone:              z.string().refine(v => !v || /^\+?[0-9\s\-()]{8,20}$/.test(v), 'Invalid phone').optional(),
-  emergency_name:     z.string().optional(),
-  emergency_relation: z.string().optional(),
-  emergency_phone:    z.string().optional(),
-  notes:              z.string().optional(),
-})
-type EditFormValues = z.infer<typeof editSchema>
 
 // ─── Data hook ─────────────────────────────────────────────────────────────────
 
