@@ -13,6 +13,8 @@ import { logAudit } from '@/lib/audit'
 import { propertySchema, type PropertyFormValues } from '@/schemas/property'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
+import { useProperties } from '@/hooks/useProperties'
+import { usePropertyRoomStats } from '@/hooks/usePropertyRoomStats'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,46 +23,11 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import type { Property } from '@/types'
 
+
 // ─── Data hooks ───────────────────────────────────────────────────────────────
+//
+// useProperties and usePropertyRoomStats imported from src/hooks/
 
-function useProperties() {
-  return useQuery({
-    queryKey: ['properties'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('name')
-      if (error) throw error
-      return data as Property[]
-    },
-  })
-}
-
-function usePropertyRoomStats() {
-  return useQuery({
-    queryKey: ['properties', 'room-stats'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('room_billing_status_v')
-        .select('property_id, billing_status')
-      if (error) throw error
-      const map: Record<string, {
-        paid: number; overdue: number; partial: number
-        vacant: number; maintenance: number; total: number
-      }> = {}
-      data?.forEach(r => {
-        if (!map[r.property_id]) {
-          map[r.property_id] = { paid: 0, overdue: 0, partial: 0, vacant: 0, maintenance: 0, total: 0 }
-        }
-        map[r.property_id].total++
-        const s = r.billing_status as keyof typeof map[string]
-        if (s in map[r.property_id]) (map[r.property_id][s] as number)++
-      })
-      return map
-    },
-  })
-}
 
 // ─── Property Form Dialog ─────────────────────────────────────────────────────
 

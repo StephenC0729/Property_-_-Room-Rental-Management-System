@@ -9,16 +9,19 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { setProfile, setLoading, clearAuth } = useAuthStore()
+  const { setProfile, setLoading, setInitialized, clearAuth } = useAuthStore()
 
   useEffect(() => {
-    // Check existing session on mount
+    // Check existing session on mount.
+    // setInitialized() MUST be called after this resolves so RoleGate
+    // stops waiting and trusts the result (whether logged in or not).
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await fetchProfile(session.user.id)
       } else {
         setLoading(false)
       }
+      setInitialized()
     })
 
     // Subscribe to auth state changes

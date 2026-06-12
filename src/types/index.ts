@@ -123,6 +123,8 @@ export type AuditAction =
   | 'ROOM_STATUS_CHANGED'
   | 'PROPERTY_CREATED'
   | 'PROPERTY_UPDATED'
+  | 'USER_ROLE_CHANGED'
+  | 'USER_REMOVED'
 
 export interface AuditLog {
   id: string

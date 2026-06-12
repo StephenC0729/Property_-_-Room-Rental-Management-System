@@ -81,10 +81,10 @@ function RemoveDialog({
       const { error } = await supabase.from('user_profiles').delete().eq('id', member.id)
       if (error) throw error
       await logAudit({
-        action: 'TENANT_UPDATED', // closest existing action; ideally USER_REMOVED
+        action: 'USER_REMOVED',
         target_type: 'user_profile',
         target_id: member.id,
-        metadata: { full_name: member.full_name, action: 'access_revoked' },
+        metadata: { full_name: member.full_name },
       })
     },
     onSuccess: () => {
@@ -142,7 +142,7 @@ function MemberRow({ member, currentUserId }: { member: UserProfile; currentUser
         .eq('id', member.id)
       if (error) throw error
       await logAudit({
-        action: 'TENANT_UPDATED',
+        action: 'USER_ROLE_CHANGED',
         target_type: 'user_profile',
         target_id: member.id,
         metadata: { full_name: member.full_name, old_role: member.role, new_role: newRole },

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { useProperties } from '@/hooks/useProperties'
+import { usePropertyRoomStats } from '@/hooks/usePropertyRoomStats'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,9 +16,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getCurrentBillingMonth, formatBillingMonth } from '@/utils/whatsapp'
-import type { Property } from '@/types'
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
+//
+// useProperties and usePropertyRoomStats are imported from src/hooks/.
+// The remaining hooks below are Dashboard-specific.
 
 function useBillingSummary() {
   return useQuery({
@@ -77,39 +81,6 @@ function useExpiringLeases() {
         .gte('expiry_date', format(today, 'yyyy-MM-dd'))
       if (error) throw error
       return count ?? 0
-    },
-  })
-}
-
-function useProperties() {
-  return useQuery({
-    queryKey: ['properties'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('properties').select('*').order('name')
-      if (error) throw error
-      return data as Property[]
-    },
-  })
-}
-
-function usePropertyRoomStats() {
-  return useQuery({
-    queryKey: ['dashboard', 'property-room-stats'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('room_billing_status_v')
-        .select('property_id, billing_status')
-      if (error) throw error
-      // Group by property_id
-      const map: Record<string, { overdue: number; partial: number; paid: number; total: number }> = {}
-      data?.forEach(r => {
-        if (!map[r.property_id]) map[r.property_id] = { overdue: 0, partial: 0, paid: 0, total: 0 }
-        map[r.property_id].total++
-        if (r.billing_status === 'overdue') map[r.property_id].overdue++
-        if (r.billing_status === 'partial') map[r.property_id].partial++
-        if (r.billing_status === 'paid') map[r.property_id].paid++
-      })
-      return map
     },
   })
 }

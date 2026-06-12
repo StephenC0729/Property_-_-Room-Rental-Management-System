@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Wallet, UserPlus, UserCog, FileText, FileX, Home,
-  Building2, Search, RefreshCw, ChevronDown, Shield,
+  Building2, Search, RefreshCw, ChevronDown, Shield, UserMinus,
 } from 'lucide-react'
 import { format, formatDistanceToNow, subDays, startOfDay } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -30,14 +30,16 @@ const ACTION_CONFIG: Record<AuditAction, {
   bgColor: string
   dot: string
 }> = {
-  PAYMENT_LOGGED:      { label: 'Payment Logged',      icon: Wallet,    color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: 'bg-emerald-400' },
-  TENANT_CREATED:      { label: 'Tenant Added',        icon: UserPlus,  color: 'text-blue-400',    bgColor: 'bg-blue-500/15',    dot: 'bg-blue-400' },
-  TENANT_UPDATED:      { label: 'Tenant Updated',      icon: UserCog,   color: 'text-violet-400',  bgColor: 'bg-violet-500/15',  dot: 'bg-violet-400' },
-  LEASE_CREATED:       { label: 'Lease Created',       icon: FileText,  color: 'text-indigo-400',  bgColor: 'bg-indigo-500/15',  dot: 'bg-indigo-400' },
-  LEASE_TERMINATED:    { label: 'Lease Terminated',    icon: FileX,     color: 'text-red-400',     bgColor: 'bg-red-500/15',     dot: 'bg-red-400' },
-  ROOM_STATUS_CHANGED: { label: 'Room Updated',        icon: Home,      color: 'text-yellow-400',  bgColor: 'bg-yellow-500/15',  dot: 'bg-yellow-400' },
-  PROPERTY_CREATED:    { label: 'Property Added',      icon: Building2, color: 'text-teal-400',    bgColor: 'bg-teal-500/15',    dot: 'bg-teal-400' },
-  PROPERTY_UPDATED:    { label: 'Property Updated',    icon: Building2, color: 'text-teal-400',    bgColor: 'bg-teal-500/15',    dot: 'bg-teal-400' },
+  PAYMENT_LOGGED:      { label: 'Payment Logged',      icon: Wallet,      color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: 'bg-emerald-400' },
+  TENANT_CREATED:      { label: 'Tenant Added',        icon: UserPlus,    color: 'text-blue-400',    bgColor: 'bg-blue-500/15',    dot: 'bg-blue-400' },
+  TENANT_UPDATED:      { label: 'Tenant Updated',      icon: UserCog,     color: 'text-violet-400',  bgColor: 'bg-violet-500/15',  dot: 'bg-violet-400' },
+  LEASE_CREATED:       { label: 'Lease Created',       icon: FileText,    color: 'text-indigo-400',  bgColor: 'bg-indigo-500/15',  dot: 'bg-indigo-400' },
+  LEASE_TERMINATED:    { label: 'Lease Terminated',    icon: FileX,       color: 'text-red-400',     bgColor: 'bg-red-500/15',     dot: 'bg-red-400' },
+  ROOM_STATUS_CHANGED: { label: 'Room Updated',        icon: Home,        color: 'text-yellow-400',  bgColor: 'bg-yellow-500/15',  dot: 'bg-yellow-400' },
+  PROPERTY_CREATED:    { label: 'Property Added',      icon: Building2,   color: 'text-teal-400',    bgColor: 'bg-teal-500/15',    dot: 'bg-teal-400' },
+  PROPERTY_UPDATED:    { label: 'Property Updated',    icon: Building2,   color: 'text-teal-400',    bgColor: 'bg-teal-500/15',    dot: 'bg-teal-400' },
+  USER_ROLE_CHANGED:   { label: 'Role Changed',        icon: Shield,      color: 'text-violet-400',  bgColor: 'bg-violet-500/15',  dot: 'bg-violet-400' },
+  USER_REMOVED:        { label: 'User Removed',        icon: UserMinus,   color: 'text-red-400',     bgColor: 'bg-red-500/15',     dot: 'bg-red-400' },
 }
 
 const ALL_ACTIONS = Object.keys(ACTION_CONFIG) as AuditAction[]
@@ -82,6 +84,17 @@ function formatMetadata(action: AuditAction, meta: Record<string, unknown> | nul
     case 'PROPERTY_CREATED':
     case 'PROPERTY_UPDATED':
       return meta.name ? String(meta.name) : ''
+
+    case 'USER_ROLE_CHANGED':
+      return [
+        meta.full_name ? String(meta.full_name) : null,
+        meta.old_role && meta.new_role
+          ? `${String(meta.old_role).replace('_', ' ')} → ${String(meta.new_role).replace('_', ' ')}`
+          : null,
+      ].filter(Boolean).join(' · ')
+
+    case 'USER_REMOVED':
+      return meta.full_name ? String(meta.full_name) : ''
 
     default:
       return ''

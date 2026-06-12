@@ -13,10 +13,13 @@ interface RoleGateProps {
  * or to /dashboard if authenticated but lacking the required role.
  */
 export function RoleGate({ children, allowedRoles }: RoleGateProps) {
-  const { profile, isLoading } = useAuthStore()
+  const { profile, isLoading, isInitialized } = useAuthStore()
   const location = useLocation()
 
-  if (isLoading) {
+  // Block rendering until the Supabase session check has completed.
+  // Without this, a stale profile cached in localStorage could let a
+  // deactivated user see protected content before the real check finishes.
+  if (!isInitialized || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

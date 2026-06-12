@@ -12,12 +12,13 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { formatRinggit } from '@/utils/exportCsv'
+import { useProperties } from '@/hooks/useProperties'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import type { Tenant, Property, Room } from '@/types'
+import type { Tenant, Room } from '@/types'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,9 @@ const leaseSchema = z.object({
 type LeaseFormValues = z.infer<typeof leaseSchema>
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
+//
+// useProperties is imported from src/hooks/useProperties.ts
+// The remaining hooks below are page-specific.
 
 function useTenants() {
   return useQuery({
@@ -49,17 +53,6 @@ function useTenants() {
       const { data, error } = await supabase.from('tenants').select('*').order('full_name')
       if (error) throw error
       return data as Tenant[]
-    },
-  })
-}
-
-function useProperties() {
-  return useQuery({
-    queryKey: ['properties'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('properties').select('*').order('name')
-      if (error) throw error
-      return data as Property[]
     },
   })
 }
@@ -151,6 +144,13 @@ function RoomPicker({ value, onChange, onRentChange }: {
   const { data: rooms } = useVacantRooms(propertyId)
   const selectedRoom = rooms?.find(r => r.id === value)
 
+  /** Change the property filter and clear any selected room to prevent stale room_id
+   *  being submitted when the previously-selected room is not in the new filter. */
+  function handlePropertyChange(newPropertyId: string | null) {
+    setPropertyId(newPropertyId)
+    if (value) onChange('')   // clear selection if a room was already chosen
+  }
+
   if (selectedRoom) {
     return (
       <div className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
@@ -176,14 +176,14 @@ function RoomPicker({ value, onChange, onRentChange }: {
     <div className="space-y-3">
       {/* Property filter */}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setPropertyId(null)}
+        <button type="button" onClick={() => handlePropertyChange(null)}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
             !propertyId ? 'border-violet-500/40 bg-violet-500/15 text-violet-300' : 'border-border bg-card text-muted-foreground hover:border-white/15'
           }`}>
           All Properties
         </button>
         {properties?.map(p => (
-          <button key={p.id} type="button" onClick={() => setPropertyId(p.id)}
+          <button key={p.id} type="button" onClick={() => handlePropertyChange(p.id)}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
               propertyId === p.id ? 'border-violet-500/40 bg-violet-500/15 text-violet-300' : 'border-border bg-card text-muted-foreground hover:border-white/15'
             }`}>

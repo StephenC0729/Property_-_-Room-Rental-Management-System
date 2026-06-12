@@ -7,6 +7,7 @@ import {
 import { format, subMonths, startOfMonth } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
+import { useProperties } from '@/hooks/useProperties'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,17 +49,8 @@ function buildMonthOptions(): { value: string; label: string }[] {
 const MONTH_OPTIONS = buildMonthOptions()
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
-
-function useProperties() {
-  return useQuery({
-    queryKey: ['properties'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('properties').select('*').order('name')
-      if (error) throw error
-      return data as Property[]
-    },
-  })
-}
+//
+// useProperties is imported from src/hooks/useProperties.ts
 
 /** For the current month, read directly from room_billing_status_v */
 function useCurrentMonthReport() {
@@ -88,7 +80,12 @@ function useHistoricalReport(billingMonth: string) {
         .eq('billing_month', billingMonth)
       if (pErr) throw pErr
 
-      // All leases that were active at some point covering this month
+      // All leases that were active at some point covering this month.
+      // We use .or() to correctly handle null dates:
+      //   - null move_in_date: treat as "started before any date" (include it)
+      //   - null expiry_date:  treat as "open-ended lease" (include it)
+      // Previously .lte('move_in_date').gte('expiry_date') silently excluded
+      // any lease with a null date because SQL null comparisons return false.
       const { data: leases, error: lErr } = await supabase
         .from('leases')
         .select(`
@@ -97,8 +94,8 @@ function useHistoricalReport(billingMonth: string) {
           rooms ( id, code, room_number, base_rent, property_id,
                   properties ( name ) )
         `)
-        .lte('move_in_date', billingMonth)
-        .gte('expiry_date',  billingMonth)
+        .or(`move_in_date.is.null,move_in_date.lte.${billingMonth}`)
+        .or(`expiry_date.is.null,expiry_date.gte.${billingMonth}`)
       if (lErr) throw lErr
 
       // Sum payments per lease_id
