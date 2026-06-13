@@ -13,6 +13,7 @@ import { nameSchema, passwordSchema, type NameFormValues, type PasswordFormValue
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -221,7 +222,7 @@ function MemberRow({ member, currentUserId }: { member: UserProfile; currentUser
 // ─── My Account ────────────────────────────────────────────────────────────────
 
 function MyAccountSection() {
-  const { profile } = useAuthStore()
+  const { profile, setProfile } = useAuthStore()
   const queryClient = useQueryClient()
   const [showPwForm, setShowPwForm] = useState(false)
 
@@ -233,8 +234,8 @@ function MyAccountSection() {
       const { error } = await supabase.from('user_profiles').update({ full_name }).eq('id', profile!.id)
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth-profile'] })
+    onSuccess: (_, { full_name }) => {
+      if (profile) setProfile({ ...profile, full_name })
       queryClient.invalidateQueries({ queryKey: ['team-members'] })
       toast.success('Name updated.')
     },
@@ -339,7 +340,7 @@ function MyAccountSection() {
 
 export function SettingsPage() {
   const { profile } = useAuthStore()
-  const { data: members, isLoading } = useTeamMembers()
+  const { data: members, isLoading, isError, error, refetch } = useTeamMembers()
 
   const roleCounts = members?.reduce((acc, m) => {
     acc[m.role] = (acc[m.role] ?? 0) + 1
@@ -390,6 +391,12 @@ export function SettingsPage() {
                 </div>
               ))}
             </div>
+          ) : isError ? (
+            <QueryErrorState
+              title="Failed to load team members"
+              message={getQueryErrorMessage(error)}
+              onRetry={() => refetch()}
+            />
           ) : !members?.length ? (
             <p className="text-sm text-muted-foreground/70 text-center py-4">No team members found.</p>
           ) : (

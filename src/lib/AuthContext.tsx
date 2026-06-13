@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { expireOverdueLeases } from '@/lib/leases'
 
 interface AuthContextValue {
   signOut: () => Promise<void>
@@ -16,28 +17,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // from the store. Safe to call even when the key is already absent.
     localStorage.removeItem('prms-auth')
 
-    // Check existing session on mount.
-    // setInitialized() MUST be called after this resolves so RoleGate
-    // stops waiting and trusts the result (whether logged in or not).
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
+    let cancelled = false
+
+    async function fetchProfile(userId: string) {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (cancelled) return
+
+      if (error || !data) {
+        console.error('[auth] Failed to fetch user profile:', error)
+        clearAuth()
+        return
+      }
+
+      setProfile(data)
+    }
+
+    // Check existing session on mount. setInitialized() MUST run in finally so
+    // RoleGate never spins forever if getSession() or fetchProfile() fails.
+    async function initSession() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (cancelled) return
+
+        if (error) throw error
+
         if (session?.user) {
+          await expireOverdueLeases()
           await fetchProfile(session.user.id)
         } else {
           clearAuth()
         }
-        setInitialized()
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('[auth] Session check failed:', err)
         clearAuth()
-        setInitialized()
-      })
+      } finally {
+        if (!cancelled) setInitialized()
+      }
+    }
+
+    void initSession()
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
+          await expireOverdueLeases()
           await fetchProfile(session.user.id)
         } else if (event === 'SIGNED_OUT') {
           clearAuth()
@@ -45,24 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
-  }, [])
-
-  async function fetchProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (error || !data) {
-      console.error('[auth] Failed to fetch user profile:', error)
-      clearAuth()
-      return
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
     }
-
-    setProfile(data)
-  }
+  }, [setProfile, setInitialized, clearAuth])
 
   async function signOut() {
     clearAuth()

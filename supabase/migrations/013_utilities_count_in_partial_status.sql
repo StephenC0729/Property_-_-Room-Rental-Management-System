@@ -1,6 +1,10 @@
 -- ============================================================
--- PRMS Migration 010: Add utility & total collection totals
--- to room_billing_status_v and get_monthly_report
+-- PRMS Migration 013: Count utilities in partial billing status
+--
+-- Migration 010 added utilities_collected / total_collected to
+-- the view but billing_status still keyed only on rent (amount).
+-- Utility-only or mixed payments were misclassified as overdue.
+-- Rent "paid" / outstanding_balance remain rent-only.
 -- ============================================================
 
 DROP VIEW IF EXISTS public.room_billing_status_v;
@@ -64,12 +68,17 @@ SELECT
   COALESCE(mp.total_collected, 0)               AS total_collected,
 
   CASE
-    WHEN r.status = 'maintenance'              THEN 'maintenance'
-    WHEN al.lease_id IS NULL                   THEN 'vacant'
-    WHEN COALESCE(mp.total_paid, 0) >= al.monthly_rent THEN 'paid'
+    WHEN r.status = 'maintenance'
+      THEN 'maintenance'
+    WHEN al.lease_id IS NULL
+      THEN 'vacant'
+    WHEN COALESCE(mp.total_paid, 0) >= al.monthly_rent
+      THEN 'paid'
     WHEN COALESCE(mp.total_paid, 0) > 0
-      OR COALESCE(mp.utilities_collected, 0) > 0 THEN 'partial'
-    WHEN EXTRACT(DAY FROM CURRENT_DATE) >= al.due_day THEN 'overdue'
+      OR COALESCE(mp.utilities_collected, 0) > 0
+      THEN 'partial'
+    WHEN EXTRACT(DAY FROM CURRENT_DATE) >= al.due_day
+      THEN 'overdue'
     ELSE 'upcoming'
   END                                           AS billing_status,
 
@@ -81,7 +90,6 @@ LEFT JOIN active_leases  al ON al.room_id  = r.id
 LEFT JOIN monthly_payments mp ON mp.room_id = r.id AND mp.lease_id = al.lease_id
 ORDER BY r.room_number;
 
--- Return type changed (added utilities/total columns, removed floor) — must drop first.
 DROP FUNCTION IF EXISTS public.get_monthly_report(date);
 
 CREATE OR REPLACE FUNCTION public.get_monthly_report(target_month date DEFAULT date_trunc('month', CURRENT_DATE)::date)

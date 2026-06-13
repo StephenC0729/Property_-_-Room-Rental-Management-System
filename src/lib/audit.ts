@@ -14,17 +14,19 @@ interface LogAuditParams {
  */
 export async function logAudit(params: LogAuditParams): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-
-    await supabase.from('audit_log').insert({
-      user_id: user?.id ?? null,
+    // user_id is set by DB trigger (trg_audit_log_set_user_id) — never trust client input.
+    const { error } = await supabase.from('audit_log').insert({
       action: params.action,
       target_type: params.target_type ?? null,
       target_id: params.target_id ?? null,
       metadata: params.metadata ?? null,
     })
-  } catch {
+
+    if (error) {
+      console.warn('[audit] Failed to write audit log entry:', error.message, params)
+    }
+  } catch (err) {
     // Audit log failure must never crash the app
-    console.warn('[audit] Failed to write audit log entry:', params)
+    console.warn('[audit] Failed to write audit log entry:', err, params)
   }
 }

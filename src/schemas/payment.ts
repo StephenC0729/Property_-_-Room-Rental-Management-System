@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { getTotalCollected } from '@/utils/paymentUtils'
 
 export const paymentSchema = z.object({
   payment_method: z.enum(['cash', 'bank_transfer']),
@@ -8,6 +9,12 @@ export const paymentSchema = z.object({
   water_bill: z.coerce.number().min(0).optional(),
   electricity_bill: z.coerce.number().min(0).optional(),
   aircond_bill: z.coerce.number().min(0).optional(),
-})
+}).refine(
+  (data) => getTotalCollected(data) > 0,
+  {
+    message: 'Total payment (rent + utilities) must be greater than RM 0.00',
+    path: ['amount'],
+  },
+)
 
 export type PaymentFormValues = z.infer<typeof paymentSchema>

@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import type { AuditLog, AuditAction } from '@/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ const ACTION_CONFIG: Record<AuditAction, {
   TENANT_CREATED:      { label: 'Tenant Added',        icon: UserPlus,    color: 'text-blue-400',    bgColor: 'bg-blue-500/15',    dot: 'bg-blue-400' },
   TENANT_UPDATED:      { label: 'Tenant Updated',      icon: UserCog,     color: 'text-violet-400',  bgColor: 'bg-violet-500/15',  dot: 'bg-violet-400' },
   LEASE_CREATED:       { label: 'Lease Created',       icon: FileText,    color: 'text-indigo-400',  bgColor: 'bg-indigo-500/15',  dot: 'bg-indigo-400' },
+  LEASE_UPDATED:       { label: 'Lease Updated',       icon: FileText,    color: 'text-indigo-400',  bgColor: 'bg-indigo-500/15',  dot: 'bg-indigo-400' },
   LEASE_TERMINATED:    { label: 'Lease Terminated',    icon: FileX,       color: 'text-red-400',     bgColor: 'bg-red-500/15',     dot: 'bg-red-400' },
   ROOM_STATUS_CHANGED: { label: 'Room Updated',        icon: Home,        color: 'text-yellow-400',  bgColor: 'bg-yellow-500/15',  dot: 'bg-yellow-400' },
   PROPERTY_CREATED:    { label: 'Property Added',      icon: Building2,   color: 'text-teal-400',    bgColor: 'bg-teal-500/15',    dot: 'bg-teal-400' },
@@ -68,7 +70,9 @@ function formatMetadata(action: AuditAction, meta: Record<string, unknown> | nul
       return meta.full_name ? String(meta.full_name) : ''
 
     case 'LEASE_CREATED':
+    case 'LEASE_UPDATED':
       return [
+        meta.room_code ? `Room ${meta.room_code}` : null,
         meta.monthly_rent ? `RM ${Number(meta.monthly_rent).toFixed(2)}/mo` : null,
       ].filter(Boolean).join(' · ')
 
@@ -372,17 +376,11 @@ export function AuditLogPage() {
           ))}
         </Card>
       ) : isError ? (
-        <Card className="border-red-500/20 bg-red-500/5 p-8 text-center">
-          <Shield className="mx-auto mb-3 h-10 w-10 text-red-400/50" />
-          <h3 className="text-sm font-semibold text-red-400">Failed to load audit log</h3>
-          <p className="mt-1 text-xs text-red-300/50">
-            {(error as Error)?.message ?? 'An unexpected error occurred. Check the browser console for details.'}
-          </p>
-          <button onClick={() => refetch()}
-            className="mt-4 text-xs text-red-400 hover:text-red-300 underline underline-offset-2 self-center">
-            Try again
-          </button>
-        </Card>
+        <QueryErrorState
+          title="Failed to load audit log"
+          message={getQueryErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
       ) : !filtered.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <Shield className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />

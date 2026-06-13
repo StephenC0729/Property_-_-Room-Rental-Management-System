@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { expireOverdueLeases } from '@/lib/leases'
 import type { Lease, Tenant, Room, Property } from '@/types'
 
 export interface LeaseDetail extends Lease {
@@ -11,6 +12,7 @@ export function useLeaseDetail(id: string) {
   return useQuery({
     queryKey: ['leases', id],
     queryFn: async () => {
+      await expireOverdueLeases()
       const { data, error } = await supabase
         .from('leases')
         .select(`

@@ -17,6 +17,7 @@ import { useProperties } from '@/hooks/useProperties'
 import { usePropertyRoomStats } from '@/hooks/usePropertyRoomStats'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
@@ -273,7 +274,7 @@ export function PropertiesPage() {
   const { isAdmin } = useAuthStore()
   const ui = useUIStore()
 
-  const { data: properties, isLoading } = useProperties()
+  const { data: properties, isLoading, isError, error, refetch } = useProperties()
   const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
 
   function openAdd() { ui.openModal('add-property') }
@@ -321,6 +322,12 @@ export function PropertiesPage() {
             <Skeleton key={i} className="h-52 rounded-xl bg-muted" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState
+          title="Failed to load properties"
+          message={getQueryErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
       ) : !properties?.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />

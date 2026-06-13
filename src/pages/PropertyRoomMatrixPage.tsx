@@ -17,6 +17,7 @@ import { useUIStore } from '@/store/uiStore'
 import { RoomDialog } from '@/components/rooms/RoomDialog'
 import { PaymentModal } from '@/components/rooms/PaymentModal'
 import { RoomCard } from '@/components/rooms/RoomCard'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 
 export function PropertyRoomMatrixPage() {
   const { id } = useParams<{ id: string }>()
@@ -24,8 +25,8 @@ export function PropertyRoomMatrixPage() {
   const queryClient = useQueryClient()
   const ui = useUIStore()
 
-  const { data: property, isLoading: propLoading } = useProperty(id!)
-  const { data: rooms, isLoading: roomsLoading } = useRoomMatrix(id!)
+  const { data: property, isLoading: propLoading, isError: propError, error: propQueryError, refetch: refetchProperty } = useProperty(id!)
+  const { data: rooms, isLoading: roomsLoading, isError: roomsError, error: roomsQueryError, refetch: refetchRooms } = useRoomMatrix(id!)
 
   // ── Realtime subscription ──────────────────────────────────────────────────
   useRealtimeSubscription(`room-matrix-${id}`, [
@@ -34,6 +35,8 @@ export function PropertyRoomMatrixPage() {
       callback: () => {
         queryClient.invalidateQueries({ queryKey: ['room-matrix', id] })
         queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['properties', 'room-stats'] })
+        queryClient.invalidateQueries({ queryKey: ['report'] })
       }
     },
     {
@@ -51,6 +54,12 @@ export function PropertyRoomMatrixPage() {
 
   const billingMonth = format(getCurrentBillingMonth(), 'MMMM yyyy')
   const isLoading = propLoading || roomsLoading
+  const isError = propError || roomsError
+  const queryError = propQueryError ?? roomsQueryError
+  const refetchMatrix = () => {
+    void refetchProperty()
+    void refetchRooms()
+  }
 
   function openAddRoom() { ui.openModal('add-room') }
   function openEditRoom(room: RoomBillingStatus) {
@@ -115,6 +124,12 @@ export function PropertyRoomMatrixPage() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
           {[...Array(20)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl bg-muted" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState
+          title="Failed to load room matrix"
+          message={getQueryErrorMessage(queryError)}
+          onRetry={refetchMatrix}
+        />
       ) : !(rooms?.length) ? (
         <Card className="border-border bg-card p-12 text-center">
           <Home className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />

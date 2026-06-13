@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import type { RoomBillingStatus } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ type SortDir = 'asc' | 'desc'
 type StatusFilter = 'all' | 'overdue' | 'partial' | 'paid' | 'vacant'
 
 interface ReportRow {
+  lease_id:             string | null
   room_id:              string
   property_id:          string
   property_name:        string
@@ -51,6 +53,26 @@ function buildMonthOptions(): { value: string; label: string }[] {
 }
 
 const MONTH_OPTIONS = buildMonthOptions()
+
+/** Normalize an ISO timestamp or date string to yyyy-MM-dd for comparison. */
+function toDateKey(value: string): string {
+  return value.slice(0, 10)
+}
+
+/**
+ * True when billingMonth (yyyy-MM-dd, always the 1st) falls within the lease
+ * period. Uses move_in_date / expiry_date when set; falls back to created_at
+ * for the start when move_in is null (open-ended leases keep a null expiry).
+ */
+function isLeaseActiveInBillingMonth(
+  lease: { move_in_date: string | null; expiry_date: string | null; created_at: string },
+  billingMonth: string,
+): boolean {
+  const effectiveStart = lease.move_in_date ?? toDateKey(lease.created_at)
+  if (effectiveStart > billingMonth) return false
+  if (lease.expiry_date && lease.expiry_date < billingMonth) return false
+  return true
+}
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 //
@@ -84,23 +106,22 @@ function useHistoricalReport(billingMonth: string) {
         .eq('billing_month', billingMonth)
       if (pErr) throw pErr
 
-      // All leases that were active at some point covering this month.
-      // We use .or() to correctly handle null dates:
-      //   - null move_in_date: treat as "started before any date" (include it)
-      //   - null expiry_date:  treat as "open-ended lease" (include it)
-      // Previously .lte('move_in_date').gte('expiry_date') silently excluded
-      // any lease with a null date because SQL null comparisons return false.
+      // Leases active during the selected billing month. Date overlap is checked
+      // client-side so we can coalesce move_in_date with created_at without
+      // treating "both dates null" as matching every month in history.
       const { data: leases, error: lErr } = await supabase
         .from('leases')
         .select(`
-          id, room_id, monthly_rent,
+          id, room_id, monthly_rent, move_in_date, expiry_date, created_at,
           tenants ( full_name ),
           rooms ( id, code, room_number, base_rent, property_id,
                   properties ( name ) )
         `)
-        .or(`move_in_date.is.null,move_in_date.lte.${billingMonth}`)
-        .or(`expiry_date.is.null,expiry_date.gte.${billingMonth}`)
       if (lErr) throw lErr
+
+      const activeLeases = (leases ?? []).filter(l =>
+        isLeaseActiveInBillingMonth(l, billingMonth)
+      )
 
       // Sum payments per lease_id
       const paidMap: Record<string, number> = {}
@@ -124,14 +145,15 @@ function useHistoricalReport(billingMonth: string) {
         rooms?: RoomRef | null
       }
 
-      return (leases as unknown as LeaseRef[]).map(l => {
+      return (activeLeases as unknown as LeaseRef[]).map(l => {
         const paid       = paidMap[l.id] ?? 0
         const utilities  = utilitiesMap[l.id] ?? 0
         const total      = totalMap[l.id] ?? 0
         const rent       = l.monthly_rent
         const balance    = Math.max(0, rent - paid)
-        const status     = paid >= rent ? 'paid' : paid > 0 ? 'partial' : 'overdue'
+        const status     = paid >= rent ? 'paid' : paid > 0 || utilities > 0 ? 'partial' : 'overdue'
         return {
+          lease_id:             l.id,
           room_id:              l.room_id,
           property_id:          l.rooms?.property_id ?? '',
           property_name:        l.rooms?.properties?.name ?? '—',
@@ -213,14 +235,15 @@ export function ReportsPage() {
   const isCurrentMonth = selectedMonth === currentMonth
 
   const { data: properties }  = useProperties()
-  const { data: currentData, isLoading: currentLoading } = useCurrentMonthReport()
-  const { data: histData,    isLoading: histLoading }    = useHistoricalReport(selectedMonth)
+  const { data: currentData, isLoading: currentLoading, isError: currentError, error: currentQueryError, refetch: refetchCurrent } = useCurrentMonthReport()
+  const { data: histData, isLoading: histLoading, isError: histError, error: histQueryError, refetch: refetchHist } = useHistoricalReport(selectedMonth)
 
   // Merge current-month view data with property names
   const currentRows = useMemo((): ReportRow[] => {
     if (!currentData) return []
     const propMap = Object.fromEntries(properties?.map(p => [p.id, p.name]) ?? [])
     return currentData.map(r => ({
+      lease_id:             r.lease_id,
       room_id:              r.room_id,
       property_id:          r.property_id,
       property_name:        propMap[r.property_id] ?? '—',
@@ -237,6 +260,9 @@ export function ReportsPage() {
 
   const rawRows: ReportRow[] = isCurrentMonth ? currentRows : (histData ?? [])
   const isLoading = isCurrentMonth ? currentLoading : histLoading
+  const isError = isCurrentMonth ? currentError : histError
+  const queryError = isCurrentMonth ? currentQueryError : histQueryError
+  const refetchReport = isCurrentMonth ? refetchCurrent : refetchHist
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -398,6 +424,12 @@ export function ReportsPage() {
         <div className="space-y-2">
           {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl bg-muted" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState
+          title="Failed to load report"
+          message={getQueryErrorMessage(queryError)}
+          onRetry={() => refetchReport()}
+        />
       ) : !filtered.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <Home className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
@@ -428,7 +460,7 @@ export function ReportsPage() {
             const cfg = STATUS_CFG[row.status] ?? STATUS_CFG.vacant
             return (
               <div
-                key={row.room_id}
+                key={row.lease_id ?? row.room_id}
                 className={`grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3 items-center
                   text-sm transition-colors hover:bg-card
                   ${idx !== filtered.length - 1 ? 'border-b border-white/4' : ''}`}

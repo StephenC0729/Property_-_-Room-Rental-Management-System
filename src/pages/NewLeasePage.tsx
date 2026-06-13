@@ -274,13 +274,6 @@ export function NewLeasePage() {
         .single()
       if (leaseErr) throw leaseErr
 
-      // Mark room as occupied
-      const { error: roomErr } = await supabase
-        .from('rooms')
-        .update({ status: 'occupied' })
-        .eq('id', values.room_id)
-      if (roomErr) throw roomErr
-
       await logAudit({
         action: 'LEASE_CREATED',
         target_type: 'lease',

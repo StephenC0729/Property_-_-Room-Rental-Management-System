@@ -24,12 +24,6 @@ export function TerminateDialog({
         .eq('id', lease.id)
       if (leaseErr) throw leaseErr
 
-      const { error: roomErr } = await supabase
-        .from('rooms')
-        .update({ status: 'vacant' })
-        .eq('id', lease.room_id)
-      if (roomErr) throw roomErr
-
       await logAudit({
         action: 'LEASE_TERMINATED',
         target_type: 'lease',

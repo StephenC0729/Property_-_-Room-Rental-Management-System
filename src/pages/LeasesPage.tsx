@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { FileText, Plus, ChevronRight, Home, CalendarDays } from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
+import { expireOverdueLeases } from '@/lib/leases'
 import { formatRinggit } from '@/utils/exportCsv'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Lease, Tenant, Room, Property } from '@/types'
@@ -41,6 +43,7 @@ function useLeases() {
   return useQuery({
     queryKey: ['leases'],
     queryFn: async () => {
+      await expireOverdueLeases()
       const { data, error } = await supabase
         .from('leases')
         .select(`
@@ -113,7 +116,7 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
 
 export function LeasesPage() {
   const [activeTab, setActiveTab] = useState<LeaseStatus | 'all'>('all')
-  const { data: leases, isLoading } = useLeases()
+  const { data: leases, isLoading, isError, error, refetch } = useLeases()
 
   const filtered = leases?.filter(l =>
     activeTab === 'all' ? true : l.status === activeTab
@@ -174,6 +177,12 @@ export function LeasesPage() {
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl bg-muted" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState
+          title="Failed to load leases"
+          message={getQueryErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
       ) : !filtered.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />

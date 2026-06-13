@@ -5,6 +5,7 @@ import { Search, Plus, User, Phone, CreditCard, Home, ChevronRight } from 'lucid
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -96,7 +97,7 @@ function TenantRow({ tenant }: { tenant: TenantWithLease }) {
 
 export function TenantsPage() {
   const [search, setSearch] = useState('')
-  const { data: tenants, isLoading } = useTenants()
+  const { data: tenants, isLoading, isError, error, refetch } = useTenants()
 
   const filtered = tenants?.filter(t => {
     if (!search.trim()) return true
@@ -147,6 +148,12 @@ export function TenantsPage() {
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl bg-muted" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState
+          title="Failed to load tenants"
+          message={getQueryErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
       ) : !filtered.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />

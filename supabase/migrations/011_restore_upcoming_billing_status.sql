@@ -83,6 +83,7 @@ SELECT
     WHEN COALESCE(mp.total_paid, 0) >= al.monthly_rent
       THEN 'paid'
     WHEN COALESCE(mp.total_paid, 0) > 0
+      OR COALESCE(mp.utilities_collected, 0) > 0
       THEN 'partial'
     WHEN EXTRACT(DAY FROM CURRENT_DATE) >= al.due_day
       THEN 'overdue'

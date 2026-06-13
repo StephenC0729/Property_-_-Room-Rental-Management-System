@@ -49,10 +49,14 @@ export function EditLeaseDialog({
       if (error) throw error
 
       await logAudit({
-        action: 'TENANT_UPDATED', // using fallback since LEASE_UPDATED not in AuditAction
+        action: 'LEASE_UPDATED',
         target_type: 'lease',
         target_id: lease.id,
-        metadata: payload,
+        metadata: {
+          ...payload,
+          tenant_name: lease.tenants?.full_name,
+          room_code: lease.rooms?.code,
+        },
       })
     },
     onSuccess: () => {

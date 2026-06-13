@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getTotalCollected } from '@/utils/paymentUtils'
@@ -150,7 +151,7 @@ function QuickAction({ to, icon: Icon, label, description, color }: {
 // ─── Role-specific views ───────────────────────────────────────────────────────
 
 function OperatorDashboard() {
-  const { data: properties, isLoading: propsLoading } = useProperties()
+  const { data: properties, isLoading: propsLoading, isError: propsError, error: propsQueryError, refetch: refetchProperties } = useProperties()
   const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
   const { data: billing } = useBillingSummary()
   const totalOverdue = (billing?.overdue ?? 0) + (billing?.partial ?? 0)
@@ -175,6 +176,12 @@ function OperatorDashboard() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
           </div>
+        ) : propsError ? (
+          <QueryErrorState
+            title="Failed to load properties"
+            message={getQueryErrorMessage(propsQueryError)}
+            onRetry={() => refetchProperties()}
+          />
         ) : !properties?.length ? (
           <Card className="p-8 text-center border-dashed">
             <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
@@ -241,6 +248,14 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {billing.isError ? (
+        <QueryErrorState
+          title="Failed to load dashboard metrics"
+          message={getQueryErrorMessage(billing.error)}
+          onRetry={() => billing.refetch()}
+        />
+      ) : (
+      <>
       {/* Metric cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -371,6 +386,8 @@ function AdminDashboard() {
 
       {/* Property overview (same as operator but smaller) */}
       <OperatorDashboard />
+      </>
+      )}
     </div>
   )
 }

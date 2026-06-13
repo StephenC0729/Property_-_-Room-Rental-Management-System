@@ -108,6 +108,7 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
     onSuccess: ({ rent, total }) => {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['properties', 'room-stats'] })
       queryClient.invalidateQueries({ queryKey: ['report'] })
       toast.success(
         total > rent
