@@ -4,18 +4,8 @@ import type { Room, Property, RoomBillingStatus } from '@/types'
 // ─── Modal data types ────────────────────────────────────────────────────────
 //
 // Each modal type maps to a specific data payload. `null` means no data is
-// needed. This discriminated mapping removes the need for `any` in the store
-// and gives explicit documentation of what each modal expects.
-
-export type ModalType =
-  | 'edit-room'
-  | 'payment'
-  | 'terminate-lease'
-  | 'edit-lease'
-  | 'edit-property'
-  | 'add-property'
-  | 'add-room'
-  | null
+// needed. ModalSlice is a discriminated union so checking activeModal narrows
+// modalData to the correct payload type.
 
 /**
  * Maps each modal type to the data it requires.
@@ -31,26 +21,38 @@ export type ModalDataMap = {
   'add-room':        null
 }
 
+export type ModalType = keyof ModalDataMap | null
+
 /** Union of all possible modal data values. */
 export type ModalData = ModalDataMap[keyof ModalDataMap]
 
-// ─── Store interface ─────────────────────────────────────────────────────────
+/** Correlated activeModal + modalData pairs for type-safe narrowing. */
+export type ModalSlice =
+  | { activeModal: null; modalData: null }
+  | {
+      [K in keyof ModalDataMap]: ModalDataMap[K] extends null
+        ? { activeModal: K; modalData: null }
+        : { activeModal: K; modalData: ModalDataMap[K] }
+    }[keyof ModalDataMap]
 
-interface UIState {
-  activeModal: ModalType
-  modalData: ModalData
-  /**
-   * Open a modal. For modals that require data (e.g. 'edit-room', 'payment',
-   * 'edit-property'), pass the typed payload as the second argument.
-   * For data-free modals, the second argument can be omitted.
-   */
-  openModal: (type: ModalType, data?: ModalData) => void
+type OpenModal = {
+  <T extends keyof ModalDataMap>(
+    type: T,
+    ...args: ModalDataMap[T] extends null ? [data?: null] : [data: ModalDataMap[T]]
+  ): void
+}
+
+export type UIState = ModalSlice & {
+  openModal: OpenModal
   closeModal: () => void
 }
 
+const closedState: ModalSlice = { activeModal: null, modalData: null }
+
 export const useUIStore = create<UIState>((set) => ({
-  activeModal: null,
-  modalData: null,
-  openModal: (type, data = null) => set({ activeModal: type, modalData: data }),
-  closeModal: () => set({ activeModal: null, modalData: null }),
+  ...closedState,
+  openModal: (type, data?) => {
+    set({ activeModal: type, modalData: data ?? null } as ModalSlice)
+  },
+  closeModal: () => set(closedState),
 }))

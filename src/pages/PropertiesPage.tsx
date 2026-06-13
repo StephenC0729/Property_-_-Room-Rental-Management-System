@@ -1,6 +1,6 @@
 
 import { Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -271,14 +271,14 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
 
 export function PropertiesPage() {
   const { isAdmin } = useAuthStore()
-  const { activeModal, modalData, openModal, closeModal } = useUIStore()
+  const ui = useUIStore()
 
   const { data: properties, isLoading } = useProperties()
   const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
 
-  function openAdd() { openModal('add-property') }
-  function openEdit(p: Property) { openModal('edit-property', p) }
-  function closeDialog() { closeModal() }
+  function openAdd() { ui.openModal('add-property') }
+  function openEdit(p: Property) { ui.openModal('edit-property', p) }
+  function closeDialog() { ui.closeModal() }
 
   const totalOverdue = properties?.reduce((sum, p) => {
     const s = roomStats?.[p.id]
@@ -356,9 +356,9 @@ export function PropertiesPage() {
       )}
 
       <PropertyDialog 
-        open={activeModal === 'add-property' || activeModal === 'edit-property'} 
+        open={ui.activeModal === 'add-property' || ui.activeModal === 'edit-property'} 
         onClose={closeDialog} 
-        editProperty={activeModal === 'edit-property' ? modalData : null} 
+        editProperty={ui.activeModal === 'edit-property' ? ui.modalData : null} 
       />
     </div>
   )

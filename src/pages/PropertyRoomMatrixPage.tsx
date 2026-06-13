@@ -22,7 +22,7 @@ export function PropertyRoomMatrixPage() {
   const { id } = useParams<{ id: string }>()
   const { isAdmin } = useAuthStore()
   const queryClient = useQueryClient()
-  const { activeModal, modalData, openModal, closeModal } = useUIStore()
+  const ui = useUIStore()
 
   const { data: property, isLoading: propLoading } = useProperty(id!)
   const { data: rooms, isLoading: roomsLoading } = useRoomMatrix(id!)
@@ -52,11 +52,11 @@ export function PropertyRoomMatrixPage() {
   const billingMonth = format(getCurrentBillingMonth(), 'MMMM yyyy')
   const isLoading = propLoading || roomsLoading
 
-  function openAddRoom() { openModal('add-room') }
+  function openAddRoom() { ui.openModal('add-room') }
   function openEditRoom(room: RoomBillingStatus) {
     const parts = room.room_code.split('-')
     const roomNum = parts.length > 1 ? parts.slice(1).join('-') : room.room_code
-    openModal('edit-room', {
+    ui.openModal('edit-room', {
       id: room.room_id,
       property_id: id!,
       code: room.room_code,
@@ -129,7 +129,7 @@ export function PropertyRoomMatrixPage() {
               key={room.room_id}
               room={room}
               isAdmin={isAdmin()}
-              onPay={() => openModal('payment', room)}
+              onPay={() => ui.openModal('payment', room)}
               onEdit={() => openEditRoom(room)}
             />
           ))}
@@ -151,16 +151,16 @@ export function PropertyRoomMatrixPage() {
       {/* Dialogs */}
       {property && (
         <RoomDialog
-          open={activeModal === 'edit-room' || activeModal === 'add-room'}
-          onClose={closeModal}
+          open={ui.activeModal === 'edit-room' || ui.activeModal === 'add-room'}
+          onClose={ui.closeModal}
           propertyId={id!}
           propertyName={property.name}
-          editRoom={activeModal === 'edit-room' ? modalData : null}
+          editRoom={ui.activeModal === 'edit-room' ? ui.modalData : null}
         />
       )}
 
-      {activeModal === 'payment' && modalData && (
-        <PaymentModal open={true} onClose={closeModal} room={modalData} />
+      {ui.activeModal === 'payment' && ui.modalData && (
+        <PaymentModal open={true} onClose={ui.closeModal} room={ui.modalData} />
       )}
     </div>
   )
