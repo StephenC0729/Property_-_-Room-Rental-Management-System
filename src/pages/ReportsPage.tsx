@@ -1,35 +1,38 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Download, TrendingUp, AlertCircle, CheckCircle2,
-  CircleDot, Home, ChevronUp, ChevronDown, Filter,
+  Download, TrendingUp, AlertCircle,
+  CircleDot, Home, ChevronUp, ChevronDown, Filter, Wallet,
 } from 'lucide-react'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
+import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
 import { useProperties } from '@/hooks/useProperties'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import type { Property, RoomBillingStatus } from '@/types'
+import type { RoomBillingStatus } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SortKey = 'property' | 'room' | 'tenant' | 'rent' | 'paid' | 'outstanding'
+type SortKey = 'property' | 'room' | 'tenant' | 'rent' | 'paid' | 'utilities' | 'total' | 'outstanding'
 type SortDir = 'asc' | 'desc'
 type StatusFilter = 'all' | 'overdue' | 'partial' | 'paid' | 'vacant'
 
 interface ReportRow {
-  room_id:      string
-  property_id:  string
-  property_name: string
-  room_code:    string
-  tenant_name:  string | null
-  monthly_rent: number
-  total_paid:   number
-  outstanding:  number
-  status:       string
+  room_id:              string
+  property_id:          string
+  property_name:        string
+  room_code:            string
+  tenant_name:          string | null
+  monthly_rent:         number
+  total_paid:           number
+  utilities_collected:  number
+  total_collected:      number
+  outstanding:          number
+  status:               string
 }
 
 // ─── Month helpers ────────────────────────────────────────────────────────────
@@ -76,7 +79,7 @@ function useHistoricalReport(billingMonth: string) {
       // Payments grouped by room/lease for this month
       const { data: payments, error: pErr } = await supabase
         .from('payment_history')
-        .select('room_id, lease_id, amount')
+        .select('room_id, lease_id, amount, water_bill, electricity_bill, aircond_bill')
         .eq('billing_month', billingMonth)
       if (pErr) throw pErr
 
@@ -100,8 +103,13 @@ function useHistoricalReport(billingMonth: string) {
 
       // Sum payments per lease_id
       const paidMap: Record<string, number> = {}
+      const utilitiesMap: Record<string, number> = {}
+      const totalMap: Record<string, number> = {}
       payments?.forEach(p => {
         paidMap[p.lease_id] = (paidMap[p.lease_id] ?? 0) + p.amount
+        const utilities = getUtilitiesCollected(p)
+        utilitiesMap[p.lease_id] = (utilitiesMap[p.lease_id] ?? 0) + utilities
+        totalMap[p.lease_id] = (totalMap[p.lease_id] ?? 0) + getTotalCollected(p)
       })
 
       type RoomRef = {
@@ -116,19 +124,23 @@ function useHistoricalReport(billingMonth: string) {
       }
 
       return (leases as unknown as LeaseRef[]).map(l => {
-        const paid    = paidMap[l.id] ?? 0
-        const rent    = l.monthly_rent
-        const balance = Math.max(0, rent - paid)
-        const status  = paid >= rent ? 'paid' : paid > 0 ? 'partial' : 'overdue'
+        const paid       = paidMap[l.id] ?? 0
+        const utilities  = utilitiesMap[l.id] ?? 0
+        const total      = totalMap[l.id] ?? 0
+        const rent       = l.monthly_rent
+        const balance    = Math.max(0, rent - paid)
+        const status     = paid >= rent ? 'paid' : paid > 0 ? 'partial' : 'overdue'
         return {
-          room_id:       l.room_id,
-          property_id:   l.rooms?.property_id ?? '',
-          property_name: l.rooms?.properties?.name ?? '—',
-          room_code:     l.rooms?.code ?? '—',
-          tenant_name:   l.tenants?.full_name ?? null,
-          monthly_rent:  rent,
-          total_paid:    paid,
-          outstanding:   balance,
+          room_id:              l.room_id,
+          property_id:          l.rooms?.property_id ?? '',
+          property_name:        l.rooms?.properties?.name ?? '—',
+          room_code:            l.rooms?.code ?? '—',
+          tenant_name:          l.tenants?.full_name ?? null,
+          monthly_rent:         rent,
+          total_paid:           paid,
+          utilities_collected:  utilities,
+          total_collected:      total,
+          outstanding:          balance,
           status,
         } satisfies ReportRow
       })
@@ -209,15 +221,17 @@ export function ReportsPage() {
     if (!currentData) return []
     const propMap = Object.fromEntries(properties?.map(p => [p.id, p.name]) ?? [])
     return currentData.map(r => ({
-      room_id:       r.room_id,
-      property_id:   r.property_id,
-      property_name: propMap[r.property_id] ?? '—',
-      room_code:     r.room_code,
-      tenant_name:   r.tenant_name,
-      monthly_rent:  r.monthly_rent ?? 0,
-      total_paid:    r.total_paid,
-      outstanding:   r.outstanding_balance,
-      status:        r.billing_status,
+      room_id:              r.room_id,
+      property_id:          r.property_id,
+      property_name:        propMap[r.property_id] ?? '—',
+      room_code:            r.room_code,
+      tenant_name:          r.tenant_name,
+      monthly_rent:         r.monthly_rent ?? 0,
+      total_paid:           r.total_paid,
+      utilities_collected:  r.utilities_collected ?? 0,
+      total_collected:      r.total_collected ?? r.total_paid,
+      outstanding:          r.outstanding_balance,
+      status:               r.billing_status,
     }))
   }, [currentData, properties])
 
@@ -237,6 +251,8 @@ export function ReportsPage() {
         case 'tenant':       return mul * (a.tenant_name ?? '').localeCompare(b.tenant_name ?? '')
         case 'rent':         return mul * (a.monthly_rent - b.monthly_rent)
         case 'paid':         return mul * (a.total_paid - b.total_paid)
+        case 'utilities':    return mul * (a.utilities_collected - b.utilities_collected)
+        case 'total':        return mul * (a.total_collected - b.total_collected)
         case 'outstanding':  return mul * (a.outstanding - b.outstanding)
         default:             return 0
       }
@@ -247,11 +263,13 @@ export function ReportsPage() {
   const stats = useMemo(() => {
     const occupied = rawRows.filter(r => r.status !== 'vacant' && r.status !== 'maintenance')
     return {
-      totalOutstanding: occupied.reduce((s, r) => s + r.outstanding, 0),
-      totalCollected:   occupied.reduce((s, r) => s + r.total_paid, 0),
-      overdueCount:     occupied.filter(r => r.status === 'overdue').length,
-      partialCount:     occupied.filter(r => r.status === 'partial').length,
-      paidCount:        occupied.filter(r => r.status === 'paid').length,
+      totalOutstanding:   occupied.reduce((s, r) => s + r.outstanding, 0),
+      rentCollected:      occupied.reduce((s, r) => s + r.total_paid, 0),
+      utilitiesCollected: occupied.reduce((s, r) => s + r.utilities_collected, 0),
+      totalCollected:     occupied.reduce((s, r) => s + r.total_collected, 0),
+      overdueCount:       occupied.filter(r => r.status === 'overdue').length,
+      partialCount:       occupied.filter(r => r.status === 'partial').length,
+      paidCount:          occupied.filter(r => r.status === 'paid').length,
     }
   }, [rawRows])
 
@@ -265,13 +283,15 @@ export function ReportsPage() {
     const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
     exportToCsv(
       filtered.map(r => ({
-        'Property':       r.property_name,
-        'Room Code':      r.room_code,
-        'Tenant':         r.tenant_name ?? '—',
-        'Monthly Rent':   r.monthly_rent.toFixed(2),
-        'Paid (RM)':      r.total_paid.toFixed(2),
-        'Outstanding (RM)': r.outstanding.toFixed(2),
-        'Status':         r.status,
+        'Property':             r.property_name,
+        'Room Code':            r.room_code,
+        'Tenant':               r.tenant_name ?? '—',
+        'Monthly Rent':         r.monthly_rent.toFixed(2),
+        'Rent Paid (RM)':       r.total_paid.toFixed(2),
+        'Utilities Paid (RM)':  r.utilities_collected.toFixed(2),
+        'Total Collected (RM)': r.total_collected.toFixed(2),
+        'Rent Outstanding (RM)': r.outstanding.toFixed(2),
+        'Status':               r.status,
       })),
       `PRMS_Outstanding_${monthLabel.replace(' ', '_')}`
     )
@@ -289,7 +309,7 @@ export function ReportsPage() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Monthly Rent Report</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{monthLabel} · Outstanding balance summary</p>
+          <p className="mt-1 text-sm text-muted-foreground">{monthLabel} · Rent collection & total payments</p>
         </div>
         <Button
           onClick={handleExport}
@@ -348,25 +368,28 @@ export function ReportsPage() {
 
       {/* Stat cards */}
       {isLoading ? (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl bg-muted" />)}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5 mb-6">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl bg-muted" />)}
         </div>
       ) : (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
-          <StatCard label="Outstanding" value={formatRinggit(stats.totalOutstanding)}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5 mb-6">
+          <StatCard label="Rent Outstanding" value={formatRinggit(stats.totalOutstanding)}
             icon={AlertCircle} color={stats.totalOutstanding > 0 ? 'text-red-400' : 'text-muted-foreground'}
             bgColor={stats.totalOutstanding > 0 ? 'bg-red-500/15' : 'bg-muted'}
-            sub="unpaid this month" />
-          <StatCard label="Collected" value={formatRinggit(stats.totalCollected)}
+            sub="unpaid rent this month" />
+          <StatCard label="Rent Collected" value={formatRinggit(stats.rentCollected)}
             icon={TrendingUp} color="text-emerald-400" bgColor="bg-emerald-500/15"
-            sub="total received" />
+            sub="rent payments received" />
+          <StatCard label="Utilities Collected" value={formatRinggit(stats.utilitiesCollected)}
+            icon={TrendingUp} color="text-sky-400" bgColor="bg-sky-500/15"
+            sub="water, electric, aircond" />
+          <StatCard label="Total Collected" value={formatRinggit(stats.totalCollected)}
+            icon={Wallet} color="text-violet-300" bgColor="bg-violet-500/15"
+            sub="rent + utilities" />
           <StatCard label="Overdue / Partial" value={`${stats.overdueCount + stats.partialCount}`}
             icon={CircleDot} color={stats.overdueCount > 0 ? 'text-orange-400' : 'text-muted-foreground'}
             bgColor={stats.overdueCount > 0 ? 'bg-orange-500/15' : 'bg-muted'}
-            sub={`${stats.overdueCount} overdue, ${stats.partialCount} partial`} />
-          <StatCard label="Fully Paid" value={`${stats.paidCount}`}
-            icon={CheckCircle2} color="text-emerald-400" bgColor="bg-emerald-500/15"
-            sub="rooms cleared" />
+            sub={`${stats.overdueCount} overdue, ${stats.partialCount} partial · ${stats.paidCount} paid`} />
         </div>
       )}
 
@@ -386,14 +409,16 @@ export function ReportsPage() {
           </p>
         </Card>
       ) : (
-        <Card className="border-border bg-card overflow-hidden">
+        <Card className="border-border bg-card overflow-hidden overflow-x-auto">
           {/* Table head */}
-          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-card">
+          <div className="grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-card">
             <SortTh label="Property"    sortKey="property"    current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Room"        sortKey="room"        current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Tenant"      sortKey="tenant"      current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Rent"        sortKey="rent"        current={sortKey} dir={sortDir} onSort={handleSort} />
-            <SortTh label="Paid"        sortKey="paid"        current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Rent Paid"   sortKey="paid"        current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Utilities"   sortKey="utilities"   current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh label="Total"       sortKey="total"       current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Outstanding" sortKey="outstanding" current={sortKey} dir={sortDir} onSort={handleSort} />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
           </div>
@@ -404,7 +429,7 @@ export function ReportsPage() {
             return (
               <div
                 key={row.room_id}
-                className={`grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 items-center
+                className={`grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3 items-center
                   text-sm transition-colors hover:bg-card
                   ${idx !== filtered.length - 1 ? 'border-b border-white/4' : ''}`}
               >
@@ -413,6 +438,8 @@ export function ReportsPage() {
                 <span className="text-white/70 truncate">{row.tenant_name ?? <span className="text-muted-foreground/50">—</span>}</span>
                 <span className="text-muted-foreground text-right whitespace-nowrap">{formatRinggit(row.monthly_rent)}</span>
                 <span className="text-emerald-400 text-right whitespace-nowrap font-medium">{formatRinggit(row.total_paid)}</span>
+                <span className="text-sky-400 text-right whitespace-nowrap">{formatRinggit(row.utilities_collected)}</span>
+                <span className="text-violet-300 text-right whitespace-nowrap font-semibold">{formatRinggit(row.total_collected)}</span>
                 <span className={`text-right whitespace-nowrap font-bold ${row.outstanding > 0 ? 'text-red-400' : 'text-muted-foreground/70'}`}>
                   {formatRinggit(row.outstanding)}
                 </span>
@@ -422,7 +449,7 @@ export function ReportsPage() {
           })}
 
           {/* Totals row */}
-          <div className="grid grid-cols-[1.5fr_auto_1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3.5 border-t border-border bg-card">
+          <div className="grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3.5 border-t border-border bg-card">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider col-span-3">
               {filtered.length} rooms shown
             </span>
@@ -431,6 +458,12 @@ export function ReportsPage() {
             </span>
             <span className="text-right text-sm font-semibold text-emerald-400 whitespace-nowrap">
               {formatRinggit(filtered.reduce((s, r) => s + r.total_paid, 0))}
+            </span>
+            <span className="text-right text-sm font-semibold text-sky-400 whitespace-nowrap">
+              {formatRinggit(filtered.reduce((s, r) => s + r.utilities_collected, 0))}
+            </span>
+            <span className="text-right text-sm font-semibold text-violet-300 whitespace-nowrap">
+              {formatRinggit(filtered.reduce((s, r) => s + r.total_collected, 0))}
             </span>
             <span className="text-right text-sm font-bold text-red-400 whitespace-nowrap">
               {formatRinggit(filtered.reduce((s, r) => s + r.outstanding, 0))}

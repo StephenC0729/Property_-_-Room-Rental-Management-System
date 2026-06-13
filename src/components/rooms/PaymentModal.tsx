@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { buildWhatsAppReceiptLink, getCurrentBillingMonth } from '@/utils/whatsapp'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getTotalCollected } from '@/utils/paymentUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -32,7 +33,7 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
   const currentRoom = rooms?.find(r => r.room_id === room?.room_id) ?? room
 
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
-  const [lastPayment, setLastPayment] = useState<{ amount: number } | null>(null)
+  const [lastPayment, setLastPayment] = useState<{ amount: number; total: number } | null>(null)
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema) as any,
@@ -90,22 +91,36 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
         action: 'PAYMENT_LOGGED',
         target_type: 'room',
         target_id: room.room_id,
-        metadata: { room_code: room.room_code, amount: values.amount, method: values.payment_method, billing_month: billingMonth },
+        metadata: {
+          room_code: room.room_code,
+          amount: values.amount,
+          total_collected: getTotalCollected(values),
+          method: values.payment_method,
+          billing_month: billingMonth,
+        },
       })
 
-      return values.amount
+      return {
+        rent: values.amount,
+        total: getTotalCollected(values),
+      }
     },
-    onSuccess: (amount) => {
+    onSuccess: ({ rent, total }) => {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success(`Payment of ${formatRinggit(amount)} recorded.`)
+      queryClient.invalidateQueries({ queryKey: ['report'] })
+      toast.success(
+        total > rent
+          ? `Payment recorded: ${formatRinggit(rent)} rent + ${formatRinggit(total - rent)} utilities.`
+          : `Payment of ${formatRinggit(rent)} recorded.`
+      )
       
       if (currentRoom?.tenant_phone) {
-        setLastPayment({ amount })
+        setLastPayment({ amount: rent, total })
         setWhatsappUrl(buildWhatsAppReceiptLink({
           phone: currentRoom.tenant_phone,
           tenantName: currentRoom.tenant_name ?? 'Tenant',
-          amount,
+          amount: total,
           roomCode: currentRoom.room_code,
           billingMonth: getCurrentBillingMonth(),
         }))
@@ -141,12 +156,22 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
             <span className="font-medium text-foreground">{currentRoom.monthly_rent ? formatRinggit(currentRoom.monthly_rent) : '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Paid This Month</span>
+            <span className="text-muted-foreground">Rent Paid This Month</span>
             <span className="font-medium text-emerald-400">{formatRinggit(currentRoom.total_paid)}</span>
+          </div>
+          {(currentRoom.utilities_collected ?? 0) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Utilities This Month</span>
+              <span className="font-medium text-sky-400">{formatRinggit(currentRoom.utilities_collected)}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Collected</span>
+            <span className="font-medium text-violet-300">{formatRinggit(currentRoom.total_collected ?? currentRoom.total_paid)}</span>
           </div>
           <Separator className="bg-white/8" />
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Outstanding</span>
+            <span className="text-muted-foreground">Rent Outstanding</span>
             <span className={`text-lg font-bold ${currentRoom.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
               {formatRinggit(currentRoom.outstanding_balance)}
             </span>
@@ -156,7 +181,14 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
         {/* Post-payment WhatsApp button */}
         {whatsappUrl && lastPayment && (
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 space-y-2">
-            <p className="text-sm font-medium text-emerald-400">✓ {formatRinggit(lastPayment.amount)} recorded!</p>
+            <p className="text-sm font-medium text-emerald-400">
+              ✓ {formatRinggit(lastPayment.total)} recorded!
+              {lastPayment.total > lastPayment.amount && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  {formatRinggit(lastPayment.amount)} rent · {formatRinggit(lastPayment.total - lastPayment.amount)} utilities
+                </span>
+              )}
+            </p>
             <Button asChild className="w-full bg-[#25D366] hover:bg-[#20bb5a] text-foreground font-semibold">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="mr-2 h-4 w-4" /> Send WhatsApp Receipt
@@ -206,7 +238,7 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
 
                 <FormField control={form.control} name="amount" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-muted-foreground">Amount (RM)</FormLabel>
+                    <FormLabel className="text-muted-foreground">Rent Amount (RM)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0.01"
                         className="bg-muted border-border text-foreground text-lg font-semibold h-12 focus:border-violet-500/60

@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabase'
 export interface PaymentRecord {
   id: string
   amount: number
+  water_bill: number
+  electricity_bill: number
+  aircond_bill: number
   payment_method: 'cash' | 'bank_transfer'
   reference: string | null
   billing_month: string

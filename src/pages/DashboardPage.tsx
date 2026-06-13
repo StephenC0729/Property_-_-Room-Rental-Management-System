@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getTotalCollected } from '@/utils/paymentUtils'
 import { getCurrentBillingMonth, formatBillingMonth } from '@/utils/whatsapp'
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
@@ -44,11 +45,10 @@ function useMonthlyRevenue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payment_history')
-        .select('amount')
+        .select('amount, water_bill, electricity_bill, aircond_bill')
         .eq('billing_month', billingMonth)
       if (error) throw error
-      const total = data?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0
-      return total
+      return data?.reduce((sum, p) => sum + getTotalCollected(p), 0) ?? 0
     },
   })
 }
@@ -277,7 +277,7 @@ function AdminDashboard() {
           color="text-emerald-400"
           bgColor="bg-emerald-500/20"
           isLoading={revenue.isLoading}
-          sublabel="total collected this month"
+          sublabel="rent + utilities collected"
         />
         <StatCard
           label="Outstanding Balance"

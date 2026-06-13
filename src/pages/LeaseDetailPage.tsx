@@ -6,6 +6,7 @@ import {
 import { format, differenceInDays } from 'date-fns'
 import { useAuthStore } from '@/store/authStore'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,7 +31,9 @@ export function LeaseDetailPage() {
   const { data: lease, isLoading } = useLeaseDetail(id!)
   const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(id!)
 
-  const totalPaid    = payments?.reduce((s, p) => s + p.amount, 0) ?? 0
+  const totalPaid    = payments?.reduce((s, p) => s + getTotalCollected(p), 0) ?? 0
+  const rentPaid     = payments?.reduce((s, p) => s + p.amount, 0) ?? 0
+  const utilitiesPaid = payments?.reduce((s, p) => s + getUtilitiesCollected(p), 0) ?? 0
   const paymentCount = payments?.length ?? 0
 
   const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -193,7 +196,11 @@ export function LeaseDetailPage() {
             {paymentCount > 0 && (
               <div className="flex items-center gap-3 text-xs text-muted-foreground/70">
                 <span>{paymentCount} payment{paymentCount !== 1 ? 's' : ''}</span>
-                <span className="text-emerald-400 font-medium">{formatRinggit(totalPaid)} total</span>
+                <span className="text-emerald-400 font-medium">{formatRinggit(rentPaid)} rent</span>
+                {utilitiesPaid > 0 && (
+                  <span className="text-sky-400 font-medium">{formatRinggit(utilitiesPaid)} utilities</span>
+                )}
+                <span className="text-violet-300 font-medium">{formatRinggit(totalPaid)} total</span>
               </div>
             )}
           </div>
@@ -220,7 +227,10 @@ export function LeaseDetailPage() {
                 <span className="text-right">Amount</span>
               </div>
 
-              {payments.map((payment, idx) => (
+              {payments.map((payment, idx) => {
+                const utilities = getUtilitiesCollected(payment)
+                const total = getTotalCollected(payment)
+                return (
                 <div
                   key={payment.id}
                   className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 items-center text-sm
@@ -241,15 +251,27 @@ export function LeaseDetailPage() {
                     {payment.reference ?? '—'}
                   </div>
                   <div className="text-right">
-                    <span className="text-emerald-400 font-semibold">{formatRinggit(payment.amount)}</span>
+                    <span className="text-violet-300 font-semibold">{formatRinggit(total)}</span>
+                    {utilities > 0 && (
+                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                        {formatRinggit(payment.amount)} rent · {formatRinggit(utilities)} utilities
+                      </p>
+                    )}
                   </div>
                 </div>
-              ))}
+              )})}
 
               {/* Total row */}
               <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3 border-t border-border bg-card">
                 <span className="text-xs text-muted-foreground/70 font-medium uppercase tracking-wider">Total Collected</span>
-                <span className="text-right font-bold text-emerald-400">{formatRinggit(totalPaid)}</span>
+                <div className="text-right">
+                  <span className="font-bold text-violet-300">{formatRinggit(totalPaid)}</span>
+                  {utilitiesPaid > 0 && (
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                      {formatRinggit(rentPaid)} rent · {formatRinggit(utilitiesPaid)} utilities
+                    </p>
+                  )}
+                </div>
               </div>
             </Card>
           )}

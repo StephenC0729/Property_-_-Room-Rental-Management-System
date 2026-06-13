@@ -49,6 +49,8 @@ export interface RoomBillingStatus {
   monthly_rent: number | null
   due_day: number | null
   total_paid: number
+  utilities_collected: number
+  total_collected: number
   outstanding_balance: number
 }
 
@@ -100,6 +102,9 @@ export interface Payment {
   room_id: string
   tenant_id: string
   amount: number
+  water_bill: number
+  electricity_bill: number
+  aircond_bill: number
   payment_date: string
   paid_at: string
   payment_method: PaymentMethod
