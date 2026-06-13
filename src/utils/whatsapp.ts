@@ -37,6 +37,18 @@ export function getCurrentBillingMonth(): Date {
 }
 
 /**
+ * Format a billing month as "yyyy-MM-dd" using local calendar date.
+ * Prefer this over Date#toISOString().slice(0, 10), which converts to UTC
+ * and can shift the month in positive-offset timezones (e.g. UTC+8).
+ */
+export function formatBillingMonthKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Formats a billing month date to "June 2026" style.
  */
 export function formatBillingMonth(date: Date | string): string {

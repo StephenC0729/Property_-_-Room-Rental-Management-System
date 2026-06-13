@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getTotalCollected } from '@/utils/paymentUtils'
-import { getCurrentBillingMonth, formatBillingMonth } from '@/utils/whatsapp'
+import { getCurrentBillingMonth, formatBillingMonth, formatBillingMonthKey } from '@/utils/whatsapp'
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 //
@@ -39,7 +39,7 @@ function useBillingSummary() {
 }
 
 function useMonthlyRevenue() {
-  const billingMonth = format(getCurrentBillingMonth(), 'yyyy-MM-dd')
+  const billingMonth = formatBillingMonthKey(getCurrentBillingMonth())
   return useQuery({
     queryKey: ['dashboard', 'monthly-revenue', billingMonth],
     queryFn: async () => {

@@ -66,9 +66,10 @@ SELECT
   CASE
     WHEN r.status = 'maintenance'              THEN 'maintenance'
     WHEN al.lease_id IS NULL                   THEN 'vacant'
-    WHEN COALESCE(mp.total_paid, 0) = 0        THEN 'overdue'
-    WHEN mp.total_paid >= al.monthly_rent      THEN 'paid'
-    ELSE                                            'partial'
+    WHEN COALESCE(mp.total_paid, 0) >= al.monthly_rent THEN 'paid'
+    WHEN COALESCE(mp.total_paid, 0) > 0        THEN 'partial'
+    WHEN EXTRACT(DAY FROM CURRENT_DATE) >= al.due_day THEN 'overdue'
+    ELSE 'upcoming'
   END                                           AS billing_status,
 
   GREATEST(0, COALESCE(al.monthly_rent, 0) - COALESCE(mp.total_paid, 0))

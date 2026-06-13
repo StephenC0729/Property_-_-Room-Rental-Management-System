@@ -7,7 +7,7 @@ import { Loader2, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
-import { buildWhatsAppReceiptLink, getCurrentBillingMonth } from '@/utils/whatsapp'
+import { buildWhatsAppReceiptLink, getCurrentBillingMonth, formatBillingMonthKey } from '@/utils/whatsapp'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getTotalCollected } from '@/utils/paymentUtils'
 import { Button } from '@/components/ui/button'
@@ -67,7 +67,7 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
   const mutation = useMutation({
     mutationFn: async (values: PaymentFormValues) => {
       if (!room?.lease_id) throw new Error('No active lease for this room')
-      const billingMonth = format(getCurrentBillingMonth(), 'yyyy-MM-dd')
+      const billingMonth = formatBillingMonthKey(getCurrentBillingMonth())
 
       const leaseRes = await supabase.from('leases').select('tenant_id').eq('id', room.lease_id).single()
       if (leaseRes.error) throw leaseRes.error

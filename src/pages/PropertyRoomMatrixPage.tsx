@@ -103,6 +103,7 @@ export function PropertyRoomMatrixPage() {
           <Badge className="bg-muted text-muted-foreground border-border text-xs">{rooms!.length} rooms · {billingMonth}</Badge>
           {counts.paid        && <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">{counts.paid} paid</Badge>}
           {counts.overdue     && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-xs">{counts.overdue} overdue</Badge>}
+          {counts.upcoming    && <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">{counts.upcoming} upcoming</Badge>}
           {counts.partial     && <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-xs">{counts.partial} partial</Badge>}
           {counts.vacant      && <Badge className="bg-muted text-muted-foreground/70 border-border text-xs">{counts.vacant} vacant</Badge>}
           {counts.maintenance && <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-xs">{counts.maintenance} maintenance</Badge>}
@@ -139,7 +140,6 @@ export function PropertyRoomMatrixPage() {
       {/* Legend */}
       <div className="mt-8 flex flex-wrap gap-4 text-xs text-muted-foreground/50">
         {(Object.entries(statusConfig) as [BillingStatus, typeof statusConfig[BillingStatus]][])
-          .filter(([k]) => k !== 'upcoming')
           .map(([key, cfg]) => (
             <span key={key} className="flex items-center gap-1.5">
               <span className={`h-2 w-2 rounded-full ${cfg.dot}`} /> {cfg.label}

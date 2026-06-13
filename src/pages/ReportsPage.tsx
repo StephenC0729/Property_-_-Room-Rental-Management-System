@@ -8,6 +8,7 @@ import { format, subMonths, startOfMonth } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
 import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
+import { formatBillingMonthKey, getCurrentBillingMonth } from '@/utils/whatsapp'
 import { useProperties } from '@/hooks/useProperties'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -42,7 +43,7 @@ function buildMonthOptions(): { value: string; label: string }[] {
   for (let i = 0; i < 13; i++) {
     const d = startOfMonth(subMonths(new Date(), i))
     options.push({
-      value: d.toISOString().slice(0, 10),   // "2026-06-01"
+      value: formatBillingMonthKey(d),
       label: format(d, 'MMMM yyyy'),
     })
   }
@@ -201,8 +202,7 @@ const STATUS_CFG: Record<string, { label: string; cls: string; dot: string }> = 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export function ReportsPage() {
-  const today        = startOfMonth(new Date())
-  const currentMonth = today.toISOString().slice(0, 10)
+  const currentMonth = formatBillingMonthKey(getCurrentBillingMonth())
 
   const [selectedMonth,  setSelectedMonth]  = useState(currentMonth)
   const [propertyFilter, setPropertyFilter] = useState<string>('all')

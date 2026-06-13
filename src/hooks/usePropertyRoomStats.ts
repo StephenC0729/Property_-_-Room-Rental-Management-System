@@ -5,6 +5,7 @@ export interface PropertyRoomStats {
   paid: number
   overdue: number
   partial: number
+  upcoming: number
   vacant: number
   maintenance: number
   total: number
@@ -27,7 +28,7 @@ export function usePropertyRoomStats() {
       const map: Record<string, PropertyRoomStats> = {}
       data?.forEach(r => {
         if (!map[r.property_id]) {
-          map[r.property_id] = { paid: 0, overdue: 0, partial: 0, vacant: 0, maintenance: 0, total: 0 }
+          map[r.property_id] = { paid: 0, overdue: 0, partial: 0, upcoming: 0, vacant: 0, maintenance: 0, total: 0 }
         }
         map[r.property_id].total++
         const s = r.billing_status as keyof PropertyRoomStats

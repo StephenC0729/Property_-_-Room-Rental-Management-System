@@ -17,8 +17,8 @@ export function RoleGate({ children, allowedRoles }: RoleGateProps) {
   const location = useLocation()
 
   // Block rendering until the Supabase session check has completed.
-  // Without this, a stale profile cached in localStorage could let a
-  // deactivated user see protected content before the real check finishes.
+  // Without this, profile/role would be unset on first paint and could
+  // flash protected content before the real session is verified.
   if (!isInitialized || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

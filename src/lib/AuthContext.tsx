@@ -9,20 +9,30 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { setProfile, setLoading, setInitialized, clearAuth } = useAuthStore()
+  const { setProfile, setInitialized, clearAuth } = useAuthStore()
 
   useEffect(() => {
+    // Drop any legacy persisted auth data from before profile/role were removed
+    // from the store. Safe to call even when the key is already absent.
+    localStorage.removeItem('prms-auth')
+
     // Check existing session on mount.
     // setInitialized() MUST be called after this resolves so RoleGate
     // stops waiting and trusts the result (whether logged in or not).
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-      setInitialized()
-    })
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        } else {
+          clearAuth()
+        }
+        setInitialized()
+      })
+      .catch((err) => {
+        console.error('[auth] Session check failed:', err)
+        clearAuth()
+        setInitialized()
+      })
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
