@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { buildWhatsAppReceiptLink, getCurrentBillingMonth, formatBillingMonthKey } from '@/utils/whatsapp'
+import { BILLING_MONTH_OPTIONS, parseBillingMonthKey } from '@/utils/billingMonth'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getTotalCollected } from '@/utils/paymentUtils'
 import { Button } from '@/components/ui/button'
@@ -22,35 +23,51 @@ import { statusConfig } from '@/utils/statusConfig'
 import { useRoomMatrix } from '@/hooks/useRoomMatrix'
 
 export interface PaymentModalProps {
-  room: RoomBillingStatus | null
+  room: (RoomBillingStatus & { property_id?: string }) | null
   open: boolean
   onClose: () => void
+  /** Pre-select billing month (e.g. when logging from Reports for a past month). */
+  defaultBillingMonth?: string
 }
 
-export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: () => void; room: RoomBillingStatus & { property_id?: string } }) {
+export function PaymentModal({ open, onClose, room, defaultBillingMonth }: PaymentModalProps) {
   const queryClient = useQueryClient()
-  const { data: rooms } = useRoomMatrix(room?.property_id ?? '')
-  const currentRoom = rooms?.find(r => r.room_id === room?.room_id) ?? room
+  const useLiveMatrix = !defaultBillingMonth
+  const { data: rooms } = useRoomMatrix(useLiveMatrix ? (room?.property_id ?? '') : '')
+  const currentRoom = useLiveMatrix
+    ? (rooms?.find(r => r.room_id === room?.room_id) ?? room)
+    : room
+
+  const currentBillingMonthKey = formatBillingMonthKey(getCurrentBillingMonth())
+  const initialBillingMonth = defaultBillingMonth ?? currentBillingMonthKey
+  const isPastMonth = initialBillingMonth !== currentBillingMonthKey
 
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
-  const [lastPayment, setLastPayment] = useState<{ amount: number; total: number } | null>(null)
+  const [lastPayment, setLastPayment] = useState<{ amount: number; total: number; billingMonth: string } | null>(null)
+
+  const defaultFormValues = useMemo((): PaymentFormValues => ({
+    billing_month: initialBillingMonth,
+    payment_method: 'cash',
+    payment_date: format(new Date(), 'yyyy-MM-dd'),
+    amount: room?.outstanding_balance ?? room?.monthly_rent ?? 0,
+    reference: '',
+    water_bill: 0,
+    electricity_bill: 0,
+    aircond_bill: 0,
+  }), [initialBillingMonth, room?.outstanding_balance, room?.monthly_rent])
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema) as any,
-    defaultValues: {
-      payment_method: 'cash',
-      payment_date: format(new Date(), 'yyyy-MM-dd'),
-      amount: room?.outstanding_balance ?? room?.monthly_rent ?? 0,
-      reference: '',
-      water_bill: 0,
-      electricity_bill: 0,
-      aircond_bill: 0,
-    },
+    defaultValues: defaultFormValues,
   })
+
+  const selectedBillingMonth = form.watch('billing_month')
+  const recordingPastMonth = selectedBillingMonth !== currentBillingMonthKey
 
   useEffect(() => {
     if (room) {
       form.reset({
+        billing_month: defaultBillingMonth ?? currentBillingMonthKey,
         payment_method: 'cash',
         payment_date: format(new Date(), 'yyyy-MM-dd'),
         amount: room.outstanding_balance > 0 ? room.outstanding_balance : (room.monthly_rent ?? 0),
@@ -62,12 +79,12 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
       setWhatsappUrl(null)
       setLastPayment(null)
     }
-  }, [room?.room_id, form, room])
+  }, [room?.room_id, form, room, defaultBillingMonth, currentBillingMonthKey])
 
   const mutation = useMutation({
     mutationFn: async (values: PaymentFormValues) => {
       if (!room?.lease_id) throw new Error('No active lease for this room')
-      const billingMonth = formatBillingMonthKey(getCurrentBillingMonth())
+      const billingMonth = values.billing_month
 
       const leaseRes = await supabase.from('leases').select('tenant_id').eq('id', room.lease_id).single()
       if (leaseRes.error) throw leaseRes.error
@@ -103,27 +120,29 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
       return {
         rent: values.amount,
         total: getTotalCollected(values),
+        billingMonth,
       }
     },
-    onSuccess: ({ rent, total }) => {
+    onSuccess: ({ rent, total, billingMonth }) => {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['properties', 'room-stats'] })
       queryClient.invalidateQueries({ queryKey: ['report'] })
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
       toast.success(
         total > rent
           ? `Payment recorded: ${formatRinggit(rent)} rent + ${formatRinggit(total - rent)} utilities.`
           : `Payment of ${formatRinggit(rent)} recorded.`
       )
-      
+
       if (currentRoom?.tenant_phone) {
-        setLastPayment({ amount: rent, total })
+        setLastPayment({ amount: rent, total, billingMonth })
         setWhatsappUrl(buildWhatsAppReceiptLink({
           phone: currentRoom.tenant_phone,
           tenantName: currentRoom.tenant_name ?? 'Tenant',
           amount: total,
           roomCode: currentRoom.room_code,
-          billingMonth: getCurrentBillingMonth(),
+          billingMonth: parseBillingMonthKey(billingMonth),
         }))
       } else {
         onClose()
@@ -156,27 +175,36 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
             <span className="text-muted-foreground">Monthly Rent</span>
             <span className="font-medium text-foreground">{currentRoom.monthly_rent ? formatRinggit(currentRoom.monthly_rent) : '—'}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Rent Paid This Month</span>
-            <span className="font-medium text-emerald-400">{formatRinggit(currentRoom.total_paid)}</span>
-          </div>
-          {(currentRoom.utilities_collected ?? 0) > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Utilities This Month</span>
-              <span className="font-medium text-sky-400">{formatRinggit(currentRoom.utilities_collected)}</span>
-            </div>
+          {!isPastMonth && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Rent Paid This Month</span>
+                <span className="font-medium text-emerald-400">{formatRinggit(currentRoom.total_paid)}</span>
+              </div>
+              {(currentRoom.utilities_collected ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Utilities This Month</span>
+                  <span className="font-medium text-sky-400">{formatRinggit(currentRoom.utilities_collected)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Collected</span>
+                <span className="font-medium text-violet-300">{formatRinggit(currentRoom.total_collected ?? currentRoom.total_paid)}</span>
+              </div>
+              <Separator className="bg-white/8" />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Rent Outstanding</span>
+                <span className={`text-lg font-bold ${currentRoom.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {formatRinggit(currentRoom.outstanding_balance)}
+                </span>
+              </div>
+            </>
           )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Total Collected</span>
-            <span className="font-medium text-violet-300">{formatRinggit(currentRoom.total_collected ?? currentRoom.total_paid)}</span>
-          </div>
-          <Separator className="bg-white/8" />
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Rent Outstanding</span>
-            <span className={`text-lg font-bold ${currentRoom.outstanding_balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-              {formatRinggit(currentRoom.outstanding_balance)}
-            </span>
-          </div>
+          {isPastMonth && (
+            <p className="text-xs text-muted-foreground/70 pt-1">
+              Backfilling a past month — amounts shown above reflect the current month only.
+            </p>
+          )}
         </div>
 
         {/* Post-payment WhatsApp button */}
@@ -205,6 +233,29 @@ export function PaymentModal({ open, onClose, room }: { open: boolean; onClose: 
         {!whatsappUrl && currentRoom.billing_status !== 'vacant' && currentRoom.billing_status !== 'maintenance' && (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-4">
+              <FormField control={form.control} name="billing_month" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-muted-foreground">Billing Month</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-sm text-foreground
+                                 focus:outline-none focus:border-violet-500/60 cursor-pointer"
+                    >
+                      {BILLING_MONTH_OPTIONS.map(m => (
+                        <option key={m.value} value={m.value} className="bg-[#1a1a2e]">{m.label}</option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  {recordingPastMonth && (
+                    <p className="text-xs text-amber-400/90">
+                      Recording for a past month — this won't change the current room matrix status.
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <FormField control={form.control} name="payment_method" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-muted-foreground">Payment Method</FormLabel>

@@ -32,6 +32,8 @@ const ACTION_CONFIG: Record<AuditAction, {
   dot: string
 }> = {
   PAYMENT_LOGGED:      { label: 'Payment Logged',      icon: Wallet,      color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', dot: 'bg-emerald-400' },
+  PAYMENT_UPDATED:     { label: 'Payment Updated',     icon: Wallet,      color: 'text-amber-400',   bgColor: 'bg-amber-500/15',   dot: 'bg-amber-400' },
+  PAYMENT_DELETED:     { label: 'Payment Deleted',     icon: Wallet,      color: 'text-red-400',     bgColor: 'bg-red-500/15',     dot: 'bg-red-400' },
   TENANT_CREATED:      { label: 'Tenant Added',        icon: UserPlus,    color: 'text-blue-400',    bgColor: 'bg-blue-500/15',    dot: 'bg-blue-400' },
   TENANT_UPDATED:      { label: 'Tenant Updated',      icon: UserCog,     color: 'text-violet-400',  bgColor: 'bg-violet-500/15',  dot: 'bg-violet-400' },
   LEASE_CREATED:       { label: 'Lease Created',       icon: FileText,    color: 'text-indigo-400',  bgColor: 'bg-indigo-500/15',  dot: 'bg-indigo-400' },
@@ -62,7 +64,23 @@ function formatMetadata(action: AuditAction, meta: Record<string, unknown> | nul
       return [
         meta.room_code ? `Room ${meta.room_code}` : null,
         meta.amount    ? `RM ${Number(meta.amount).toFixed(2)}` : null,
+        meta.billing_month ? String(meta.billing_month).slice(0, 7) : null,
         meta.method    ? String(meta.method).replace('_', ' ') : null,
+      ].filter(Boolean).join(' · ')
+
+    case 'PAYMENT_UPDATED':
+      return [
+        meta.room_code ? `Room ${meta.room_code}` : null,
+        meta.before && meta.after
+          ? `${String((meta.before as Record<string, unknown>).billing_month ?? '').slice(0, 7)} → ${String((meta.after as Record<string, unknown>).billing_month ?? '').slice(0, 7)}`
+          : null,
+      ].filter(Boolean).join(' · ')
+
+    case 'PAYMENT_DELETED':
+      return [
+        meta.room_code ? `Room ${meta.room_code}` : null,
+        meta.billing_month ? String(meta.billing_month).slice(0, 7) : null,
+        meta.total ? `RM ${Number(meta.total).toFixed(2)}` : null,
       ].filter(Boolean).join(' · ')
 
     case 'TENANT_CREATED':

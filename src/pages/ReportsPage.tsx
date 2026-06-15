@@ -2,20 +2,22 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Download, TrendingUp, AlertCircle,
-  CircleDot, Home, ChevronUp, ChevronDown, Filter, Wallet,
+  CircleDot, Home, ChevronUp, ChevronDown, Filter, Wallet, Plus,
 } from 'lucide-react'
-import { format, subMonths, startOfMonth } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
 import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
 import { formatBillingMonthKey, getCurrentBillingMonth } from '@/utils/whatsapp'
+import { BILLING_MONTH_OPTIONS } from '@/utils/billingMonth'
 import { useProperties } from '@/hooks/useProperties'
+import { useAuthStore } from '@/store/authStore'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
-import type { RoomBillingStatus } from '@/types'
+import { PaymentModal } from '@/components/rooms/PaymentModal'
+import type { RoomBillingStatus, BillingStatus } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,19 +42,28 @@ interface ReportRow {
 
 // ─── Month helpers ────────────────────────────────────────────────────────────
 
-function buildMonthOptions(): { value: string; label: string }[] {
-  const options = []
-  for (let i = 0; i < 13; i++) {
-    const d = startOfMonth(subMonths(new Date(), i))
-    options.push({
-      value: formatBillingMonthKey(d),
-      label: format(d, 'MMMM yyyy'),
-    })
-  }
-  return options
-}
+const MONTH_OPTIONS = BILLING_MONTH_OPTIONS
 
-const MONTH_OPTIONS = buildMonthOptions()
+function reportRowToRoom(row: ReportRow): RoomBillingStatus & { property_id: string } {
+  return {
+    room_id: row.room_id,
+    room_code: row.room_code,
+    room_number: row.room_code,
+    base_rent: row.monthly_rent,
+    room_status: row.status === 'vacant' || row.status === 'maintenance' ? row.status : 'occupied',
+    billing_status: row.status as BillingStatus,
+    tenant_name: row.tenant_name,
+    tenant_phone: null,
+    lease_id: row.lease_id,
+    monthly_rent: row.monthly_rent,
+    due_day: null,
+    total_paid: row.total_paid,
+    utilities_collected: row.utilities_collected,
+    total_collected: row.total_collected,
+    outstanding_balance: row.outstanding,
+    property_id: row.property_id,
+  }
+}
 
 /** Normalize an ISO timestamp or date string to yyyy-MM-dd for comparison. */
 function toDateKey(value: string): string {
@@ -225,12 +236,14 @@ const STATUS_CFG: Record<string, { label: string; cls: string; dot: string }> = 
 
 export function ReportsPage() {
   const currentMonth = formatBillingMonthKey(getCurrentBillingMonth())
+  const { isOperator } = useAuthStore()
 
   const [selectedMonth,  setSelectedMonth]  = useState(currentMonth)
   const [propertyFilter, setPropertyFilter] = useState<string>('all')
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>('all')
   const [sortKey,        setSortKey]        = useState<SortKey>('outstanding')
   const [sortDir,        setSortDir]        = useState<SortDir>('desc')
+  const [paymentRoom,    setPaymentRoom]    = useState<(RoomBillingStatus & { property_id: string }) | null>(null)
 
   const isCurrentMonth = selectedMonth === currentMonth
 
@@ -443,7 +456,7 @@ export function ReportsPage() {
       ) : (
         <Card className="border-border bg-card overflow-hidden overflow-x-auto">
           {/* Table head */}
-          <div className="grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-card">
+          <div className="grid min-w-[1000px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto_auto] gap-x-4 px-4 py-3 border-b border-white/6 bg-card">
             <SortTh label="Property"    sortKey="property"    current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Room"        sortKey="room"        current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Tenant"      sortKey="tenant"      current={sortKey} dir={sortDir} onSort={handleSort} />
@@ -453,15 +466,19 @@ export function ReportsPage() {
             <SortTh label="Total"       sortKey="total"       current={sortKey} dir={sortDir} onSort={handleSort} />
             <SortTh label="Outstanding" sortKey="outstanding" current={sortKey} dir={sortDir} onSort={handleSort} />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+            {isOperator() && (
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Log</span>
+            )}
           </div>
 
           {/* Table rows */}
           {filtered.map((row, idx) => {
             const cfg = STATUS_CFG[row.status] ?? STATUS_CFG.vacant
+            const canLog = isOperator() && row.lease_id && row.status !== 'vacant' && row.status !== 'maintenance'
             return (
               <div
                 key={row.lease_id ?? row.room_id}
-                className={`grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3 items-center
+                className={`grid min-w-[1000px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto_auto] gap-x-4 px-4 py-3 items-center
                   text-sm transition-colors hover:bg-card
                   ${idx !== filtered.length - 1 ? 'border-b border-white/4' : ''}`}
               >
@@ -476,12 +493,30 @@ export function ReportsPage() {
                   {formatRinggit(row.outstanding)}
                 </span>
                 <Badge className={`text-xs justify-center ${cfg.cls}`}>{cfg.label}</Badge>
+                {isOperator() && (
+                  <div className="flex justify-center">
+                    {canLog ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                        title={`Log payment for ${monthLabel}`}
+                        onClick={() => setPaymentRoom(reportRowToRoom(row))}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground/30">—</span>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
 
           {/* Totals row */}
-          <div className="grid min-w-[960px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto] gap-x-4 px-4 py-3.5 border-t border-border bg-card">
+          <div className="grid min-w-[1000px] grid-cols-[1.4fr_auto_1fr_repeat(5,auto)_auto_auto] gap-x-4 px-4 py-3.5 border-t border-border bg-card">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider col-span-3">
               {filtered.length} rooms shown
             </span>
@@ -501,8 +536,18 @@ export function ReportsPage() {
               {formatRinggit(filtered.reduce((s, r) => s + r.outstanding, 0))}
             </span>
             <span />
+            {isOperator() && <span />}
           </div>
         </Card>
+      )}
+
+      {paymentRoom && (
+        <PaymentModal
+          open={true}
+          onClose={() => setPaymentRoom(null)}
+          room={paymentRoom}
+          defaultBillingMonth={selectedMonth}
+        />
       )}
     </div>
   )

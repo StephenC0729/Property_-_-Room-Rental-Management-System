@@ -60,7 +60,7 @@ export function NewTenantPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] })
       toast.success(`${data.full_name} added successfully.`)
-      navigate(`/tenants/${data.id}`)
+      navigate(`/tenants/${data.id}`, { replace: true })
     },
     onError: (err: Error) => {
       if (err.message.includes('unique') || err.message.includes('nric_passport')) {

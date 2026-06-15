@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Home, User, CreditCard, CalendarDays, Wallet,
@@ -7,6 +8,7 @@ import { format, differenceInDays } from 'date-fns'
 import { useAuthStore } from '@/store/authStore'
 import { formatRinggit } from '@/utils/exportCsv'
 import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
+import { parseBillingMonthKey } from '@/utils/billingMonth'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,19 +16,21 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 
 import { useLeaseDetail } from '@/hooks/useLeaseDetail'
-import { usePaymentHistory } from '@/hooks/usePaymentHistory'
+import { usePaymentHistory, type PaymentRecord } from '@/hooks/usePaymentHistory'
 import { InfoGrid } from '@/components/leases/InfoGrid'
 import { MethodBadge } from '@/components/leases/MethodBadge'
 import { StatusInfo } from '@/components/leases/StatusInfo'
 import { TerminateDialog } from '@/components/leases/TerminateDialog'
 import { EditLeaseDialog } from '@/components/leases/EditLeaseDialog'
+import { EditPaymentDialog } from '@/components/payments/EditPaymentDialog'
 import { useUIStore } from '@/store/uiStore'
 
 export function LeaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = useAuthStore()
+  const { isAdmin, isSuperAdmin } = useAuthStore()
   const { activeModal, openModal, closeModal } = useUIStore()
+  const [editingPayment, setEditingPayment] = useState<PaymentRecord | null>(null)
 
   const { data: lease, isLoading } = useLeaseDetail(id!)
   const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(id!)
@@ -220,11 +224,12 @@ export function LeaseDetailPage() {
           ) : (
             <Card className="border-border bg-card overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2.5 border-b border-white/6 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-4 py-2.5 border-b border-white/6 text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
                 <span>Billing Month</span>
                 <span className="text-right hidden sm:block">Method</span>
                 <span className="text-right hidden sm:block">Reference</span>
                 <span className="text-right">Amount</span>
+                {isAdmin() && <span className="text-right w-8" />}
               </div>
 
               {payments.map((payment, idx) => {
@@ -233,12 +238,12 @@ export function LeaseDetailPage() {
                 return (
                 <div
                   key={payment.id}
-                  className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 items-center text-sm
+                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-4 py-3 items-center text-sm
                     ${idx !== payments.length - 1 ? 'border-b border-white/4' : ''}`}
                 >
                   <div>
                     <p className="text-foreground font-medium">
-                      {format(new Date(payment.billing_month), 'MMMM yyyy')}
+                      {format(parseBillingMonthKey(payment.billing_month), 'MMMM yyyy')}
                     </p>
                     <p className="text-xs text-muted-foreground/70 mt-0.5">
                       Paid {format(new Date(payment.payment_date ?? payment.paid_at), 'dd MMM yyyy')}
@@ -258,6 +263,19 @@ export function LeaseDetailPage() {
                       </p>
                     )}
                   </div>
+                  {isAdmin() && (
+                    <div className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => setEditingPayment(payment)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )})}
 
@@ -292,6 +310,16 @@ export function LeaseDetailPage() {
           lease={lease}
           open={activeModal === 'edit-lease'}
           onClose={closeModal}
+        />
+      )}
+      {lease && editingPayment && (
+        <EditPaymentDialog
+          open={true}
+          onClose={() => setEditingPayment(null)}
+          payment={editingPayment}
+          leaseId={lease.id}
+          roomCode={lease.rooms?.code ?? '—'}
+          canDelete={isSuperAdmin()}
         />
       )}
     </div>

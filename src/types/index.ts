@@ -121,6 +121,8 @@ export interface Payment {
 
 export type AuditAction =
   | 'PAYMENT_LOGGED'
+  | 'PAYMENT_UPDATED'
+  | 'PAYMENT_DELETED'
   | 'TENANT_CREATED'
   | 'TENANT_UPDATED'
   | 'LEASE_CREATED'

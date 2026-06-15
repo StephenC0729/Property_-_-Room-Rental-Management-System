@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Plus, ChevronRight, Home, CalendarDays } from 'lucide-react'
+import { FileText, Plus, ChevronRight, Home, CalendarDays, Search } from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { expireOverdueLeases } from '@/lib/leases'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Lease, Tenant, Room, Property } from '@/types'
 
@@ -116,11 +117,23 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
 
 export function LeasesPage() {
   const [activeTab, setActiveTab] = useState<LeaseStatus | 'all'>('all')
+  const [search, setSearch] = useState('')
   const { data: leases, isLoading, isError, error, refetch } = useLeases()
 
-  const filtered = leases?.filter(l =>
+  const tabFiltered = leases?.filter(l =>
     activeTab === 'all' ? true : l.status === activeTab
   ) ?? []
+
+  const filtered = tabFiltered.filter(l => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      (l.tenants?.full_name && l.tenants.full_name.toLowerCase().includes(q)) ||
+      (l.tenants?.phone && l.tenants.phone.includes(q)) ||
+      (l.rooms?.code && l.rooms.code.toLowerCase().includes(q)) ||
+      (l.rooms?.properties?.name && l.rooms.properties.name.toLowerCase().includes(q))
+    )
+  })
 
   const counts = leases?.reduce((acc, l) => {
     acc[l.status as LeaseStatus] = (acc[l.status as LeaseStatus] ?? 0) + 1
@@ -146,6 +159,17 @@ export function LeasesPage() {
             <Plus className="mr-2 h-4 w-4" /> New Lease
           </Link>
         </Button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4 max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+        <Input
+          placeholder="Search by tenant, room, property, or phone…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/50 h-10"
+        />
       </div>
 
       {/* Tabs */}
@@ -186,17 +210,35 @@ export function LeasesPage() {
       ) : !filtered.length ? (
         <Card className="border-border bg-card p-12 text-center">
           <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
-          <h3 className="text-base font-semibold text-muted-foreground">No {activeTab !== 'all' ? activeTab : ''} leases</h3>
-          <p className="mt-1 text-sm text-muted-foreground/50">
-            {activeTab === 'all' || activeTab === 'active'
-              ? 'Create a new lease to bind a tenant to a room.'
-              : `No ${activeTab} leases on record.`}
-          </p>
+          {search ? (
+            <>
+              <h3 className="text-base font-semibold text-muted-foreground">No results for "{search}"</h3>
+              <p className="mt-1 text-sm text-muted-foreground/50">
+                Try a different tenant name, room code, property, or phone number.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-base font-semibold text-muted-foreground">No {activeTab !== 'all' ? activeTab : ''} leases</h3>
+              <p className="mt-1 text-sm text-muted-foreground/50">
+                {activeTab === 'all' || activeTab === 'active'
+                  ? 'Create a new lease to bind a tenant to a room.'
+                  : `No ${activeTab} leases on record.`}
+              </p>
+            </>
+          )}
         </Card>
       ) : (
         <div className="space-y-1.5">
           {filtered.map(lease => <LeaseRow key={lease.id} lease={lease} />)}
         </div>
+      )}
+
+      {/* Count footer */}
+      {filtered.length > 0 && search && (
+        <p className="mt-4 text-xs text-muted-foreground/50 text-center">
+          Showing {filtered.length} of {tabFiltered.length}{activeTab !== 'all' ? ` ${activeTab}` : ''} leases
+        </p>
       )}
     </div>
   )

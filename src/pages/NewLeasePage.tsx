@@ -25,7 +25,7 @@ import type { Tenant, Room } from '@/types'
 const leaseSchema = z.object({
   tenant_id:         z.string().uuid('Please select a tenant'),
   room_id:           z.string().uuid('Please select a room'),
-  monthly_rent:      z.coerce.number().positive('Monthly rent must be greater than 0'),
+  monthly_rent:      z.coerce.number().min(0, 'Monthly rent must be 0 or greater'),
   due_day:           z.coerce.number().int().min(1).max(28),
   move_in_date:      z.string().optional(),
   expiry_date:       z.string().optional(),
@@ -288,7 +288,7 @@ export function NewLeasePage() {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Lease created successfully.')
-      navigate(`/leases/${lease.id}`)
+      navigate(`/leases/${lease.id}`, { replace: true })
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -372,6 +372,7 @@ export function NewLeasePage() {
                         {...field} />
                     </FormControl>
                     <FormMessage />
+                    <p className="text-xs text-muted-foreground/50">Use 0 if the tenant only pays utilities (e.g. electricity).</p>
                   </FormItem>
                 )} />
               </FieldRow>
