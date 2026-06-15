@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
 import { getTotalCollected } from '@/utils/paymentUtils'
-import { BILLING_MONTH_OPTIONS } from '@/utils/billingMonth'
+import { useBillingMonthOptions } from '@/hooks/useBillingMonthOptions'
+import { BillingMonthPicker } from '@/components/billing/BillingMonthPicker'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
@@ -32,6 +33,7 @@ export function EditPaymentDialog({
   canDelete,
 }: EditPaymentDialogProps) {
   const queryClient = useQueryClient()
+  const { options: billingMonthOptions } = useBillingMonthOptions()
 
   const form = useForm<EditPaymentFormValues>({
     resolver: zodResolver(editPaymentSchema) as any,
@@ -150,15 +152,12 @@ export function EditPaymentDialog({
               <FormItem>
                 <FormLabel className="text-muted-foreground">Billing Month</FormLabel>
                 <FormControl>
-                  <select
-                    {...field}
-                    className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-sm text-foreground
-                               focus:outline-none focus:border-violet-500/60 cursor-pointer"
-                  >
-                    {BILLING_MONTH_OPTIONS.map(m => (
-                      <option key={m.value} value={m.value} className="bg-[#1a1a2e]">{m.label}</option>
-                    ))}
-                  </select>
+                  <BillingMonthPicker
+                    mode="compact"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={billingMonthOptions}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -205,9 +204,10 @@ export function EditPaymentDialog({
                                  [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                       {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground/50">Use 0 if the tenant only pays utilities.</p>
+                  </FormItem>
+                )} />
             </div>
 
             <FormField control={form.control} name="reference" render={({ field }) => (

@@ -14,6 +14,7 @@ import { logAudit } from '@/lib/audit'
 import { useAuthStore } from '@/store/authStore'
 import { tenantSchema as editSchema, type TenantFormValues as EditFormValues } from '@/schemas/tenant'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getLeaseStatusBadge } from '@/utils/leaseStatusConfig'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -198,12 +199,7 @@ function LeaseCard({ lease }: { lease: LeaseWithRoom }) {
   const isActive = lease.status === 'active'
   const isExpired = !isActive && lease.expiry_date && isPast(new Date(lease.expiry_date))
   const room = lease.rooms
-
-  const statusBadge = {
-    active:     { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-    expired:    { label: 'Expired',    cls: 'bg-muted text-muted-foreground/70 border-border' },
-    terminated: { label: 'Terminated', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  }[lease.status] ?? { label: lease.status, cls: 'bg-muted text-muted-foreground/70 border-border' }
+  const statusBadge = getLeaseStatusBadge(lease.status)
 
   return (
     <div className={`rounded-xl border p-4 space-y-3 ${isActive ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/6 bg-card'}`}>

@@ -6,9 +6,10 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { formatRinggit, exportToCsv } from '@/utils/exportCsv'
+import { compareReportRoomRows, compareRoomNumbers, roomNumberFromCode } from '@/utils/roomUtils'
 import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
-import { formatBillingMonthKey, getCurrentBillingMonth } from '@/utils/whatsapp'
-import { BILLING_MONTH_OPTIONS } from '@/utils/billingMonth'
+import { useBillingMonthOptions } from '@/hooks/useBillingMonthOptions'
+import { BillingMonthPicker } from '@/components/billing/BillingMonthPicker'
 import { useProperties } from '@/hooks/useProperties'
 import { useAuthStore } from '@/store/authStore'
 import { Card } from '@/components/ui/card'
@@ -31,6 +32,7 @@ interface ReportRow {
   property_id:          string
   property_name:        string
   room_code:            string
+  room_number:          string
   tenant_name:          string | null
   monthly_rent:         number
   total_paid:           number
@@ -40,15 +42,11 @@ interface ReportRow {
   status:               string
 }
 
-// ─── Month helpers ────────────────────────────────────────────────────────────
-
-const MONTH_OPTIONS = BILLING_MONTH_OPTIONS
-
 function reportRowToRoom(row: ReportRow): RoomBillingStatus & { property_id: string } {
   return {
     room_id: row.room_id,
     room_code: row.room_code,
-    room_number: row.room_code,
+    room_number: row.room_number,
     base_rent: row.monthly_rent,
     room_status: row.status === 'vacant' || row.status === 'maintenance' ? row.status : 'occupied',
     billing_status: row.status as BillingStatus,
@@ -97,7 +95,6 @@ function useCurrentMonthReport() {
       const { data, error } = await supabase
         .from('room_billing_status_v')
         .select('*')
-        .order('room_code')
       if (error) throw error
       return data as (RoomBillingStatus & { property_id: string })[]
     },
@@ -169,6 +166,7 @@ function useHistoricalReport(billingMonth: string) {
           property_id:          l.rooms?.property_id ?? '',
           property_name:        l.rooms?.properties?.name ?? '—',
           room_code:            l.rooms?.code ?? '—',
+          room_number:          l.rooms?.room_number ?? roomNumberFromCode(l.rooms?.code ?? ''),
           tenant_name:          l.tenants?.full_name ?? null,
           monthly_rent:         rent,
           total_paid:           paid,
@@ -235,14 +233,14 @@ const STATUS_CFG: Record<string, { label: string; cls: string; dot: string }> = 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export function ReportsPage() {
-  const currentMonth = formatBillingMonthKey(getCurrentBillingMonth())
+  const { options: monthOptions, currentMonthKey: currentMonth, getLabel: getMonthLabel } = useBillingMonthOptions()
   const { isOperator } = useAuthStore()
 
   const [selectedMonth,  setSelectedMonth]  = useState(currentMonth)
   const [propertyFilter, setPropertyFilter] = useState<string>('all')
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>('all')
-  const [sortKey,        setSortKey]        = useState<SortKey>('outstanding')
-  const [sortDir,        setSortDir]        = useState<SortDir>('desc')
+  const [sortKey,        setSortKey]        = useState<SortKey>('room')
+  const [sortDir,        setSortDir]        = useState<SortDir>('asc')
   const [paymentRoom,    setPaymentRoom]    = useState<(RoomBillingStatus & { property_id: string }) | null>(null)
 
   const isCurrentMonth = selectedMonth === currentMonth
@@ -261,6 +259,7 @@ export function ReportsPage() {
       property_id:          r.property_id,
       property_name:        propMap[r.property_id] ?? '—',
       room_code:            r.room_code,
+      room_number:          r.room_number ?? roomNumberFromCode(r.room_code),
       tenant_name:          r.tenant_name,
       monthly_rent:         r.monthly_rent ?? 0,
       total_paid:           r.total_paid,
@@ -285,8 +284,12 @@ export function ReportsPage() {
     return [...rows].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
       switch (sortKey) {
-        case 'property':     return mul * a.property_name.localeCompare(b.property_name)
-        case 'room':         return mul * a.room_code.localeCompare(b.room_code)
+        case 'property': {
+          const propCmp = a.property_name.localeCompare(b.property_name)
+          if (propCmp !== 0) return mul * propCmp
+          return mul * compareRoomNumbers(a.room_number, b.room_number)
+        }
+        case 'room':         return mul * compareReportRoomRows(a, b)
         case 'tenant':       return mul * (a.tenant_name ?? '').localeCompare(b.tenant_name ?? '')
         case 'rent':         return mul * (a.monthly_rent - b.monthly_rent)
         case 'paid':         return mul * (a.total_paid - b.total_paid)
@@ -314,12 +317,15 @@ export function ReportsPage() {
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('desc') }
+    else {
+      setSortKey(key)
+      setSortDir(key === 'room' || key === 'property' || key === 'tenant' ? 'asc' : 'desc')
+    }
   }
 
   // ── CSV Export ─────────────────────────────────────────────────────────────
   function handleExport() {
-    const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
+    const monthLabel = getMonthLabel(selectedMonth)
     exportToCsv(
       filtered.map(r => ({
         'Property':             r.property_name,
@@ -336,7 +342,7 @@ export function ReportsPage() {
     )
   }
 
-  const monthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label ?? selectedMonth
+  const monthLabel = getMonthLabel(selectedMonth)
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
@@ -362,18 +368,15 @@ export function ReportsPage() {
       {/* Controls row */}
       <div className="mb-5 flex flex-wrap gap-3">
         {/* Month picker */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-[220px]">
           <span className="text-xs text-muted-foreground/70 shrink-0">Month</span>
-          <select
+          <BillingMonthPicker
+            mode="search"
             value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground
-                       focus:outline-none focus:border-violet-500/50 cursor-pointer"
-          >
-            {MONTH_OPTIONS.map(m => (
-              <option key={m.value} value={m.value} className="bg-[#1a1a2e]">{m.label}</option>
-            ))}
-          </select>
+            onChange={setSelectedMonth}
+            options={monthOptions}
+            className="flex-1"
+          />
         </div>
 
         {/* Property filter */}

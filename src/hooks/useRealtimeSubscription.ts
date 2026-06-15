@@ -9,6 +9,18 @@ export interface PostgresChangeConfig {
   filter?: string
 }
 
+/** Stable key for postgres listener config — callbacks are excluded (handled via ref). */
+function subscriptionConfigKey(subscriptions: { config: PostgresChangeConfig }[]): string {
+  return JSON.stringify(
+    subscriptions.map(s => ({
+      event: s.config.event,
+      schema: s.config.schema ?? 'public',
+      table: s.config.table,
+      filter: s.config.filter ?? null,
+    })),
+  )
+}
+
 export function useRealtimeSubscription(
   channelName: string,
   subscriptions: {
@@ -18,10 +30,12 @@ export function useRealtimeSubscription(
   }[]
 ) {
   const callbacksRef = useRef(subscriptions.map(s => s.callback))
-  
+
   useEffect(() => {
     callbacksRef.current = subscriptions.map(s => s.callback)
   })
+
+  const configKey = subscriptionConfigKey(subscriptions)
 
   useEffect(() => {
     let channel = supabase.channel(channelName)
@@ -31,9 +45,7 @@ export function useRealtimeSubscription(
         'postgres_changes',
         { schema: 'public', ...sub.config } as any,
         (payload) => {
-          if (callbacksRef.current[index]) {
-            callbacksRef.current[index](payload)
-          }
+          callbacksRef.current[index]?.(payload)
         }
       )
     })
@@ -43,6 +55,7 @@ export function useRealtimeSubscription(
     return () => {
       supabase.removeChannel(channel)
     }
+    // subscriptions read from the render where configKey changed; callbacks stay fresh via ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName]) // only re-subscribe if channel name changes
+  }, [channelName, configKey])
 }

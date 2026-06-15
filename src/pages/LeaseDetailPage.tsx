@@ -7,6 +7,7 @@ import {
 import { format, differenceInDays } from 'date-fns'
 import { useAuthStore } from '@/store/authStore'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getLeaseStatusBadge } from '@/utils/leaseStatusConfig'
 import { getTotalCollected, getUtilitiesCollected } from '@/utils/paymentUtils'
 import { parseBillingMonthKey } from '@/utils/billingMonth'
 import { Button } from '@/components/ui/button'
@@ -40,12 +41,7 @@ export function LeaseDetailPage() {
   const utilitiesPaid = payments?.reduce((s, p) => s + getUtilitiesCollected(p), 0) ?? 0
   const paymentCount = payments?.length ?? 0
 
-  const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    active:     { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-    expired:    { label: 'Expired',    cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-    terminated: { label: 'Terminated', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  }
-  const badge = STATUS_BADGE[lease?.status ?? 'active'] ?? STATUS_BADGE.active
+  const badge = getLeaseStatusBadge(lease?.status ?? 'active')
 
   if (isLoading) {
     return (

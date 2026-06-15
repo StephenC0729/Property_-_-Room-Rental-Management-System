@@ -6,6 +6,7 @@ import { format, differenceInDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { expireOverdueLeases } from '@/lib/leases'
 import { formatRinggit } from '@/utils/exportCsv'
+import { getLeaseStatusBadge } from '@/utils/leaseStatusConfig'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
@@ -32,12 +33,6 @@ const STATUS_TABS: { key: LeaseStatus | 'all'; label: string }[] = [
   { key: 'terminated', label: 'Terminated' },
 ]
 
-const STATUS_BADGE: Record<LeaseStatus, { label: string; cls: string }> = {
-  active:     { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-  expired:    { label: 'Expired',    cls: 'bg-muted text-muted-foreground/70 border-border' },
-  terminated: { label: 'Terminated', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-}
-
 // ─── Data hook ─────────────────────────────────────────────────────────────────
 
 function useLeases() {
@@ -63,7 +58,7 @@ function useLeases() {
 
 function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
   const status = lease.status as LeaseStatus
-  const badge = STATUS_BADGE[status] ?? STATUS_BADGE.expired
+  const badge = getLeaseStatusBadge(status)
   const expiryDate = lease.expiry_date ? new Date(lease.expiry_date) : null
   const daysToExpiry = expiryDate ? differenceInDays(expiryDate, new Date()) : null
   const expiringWarning = status === 'active' && daysToExpiry !== null && daysToExpiry >= 0 && daysToExpiry <= 30

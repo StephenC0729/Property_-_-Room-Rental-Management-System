@@ -15,7 +15,7 @@ const paymentFields = {
 export const paymentSchema = z.object(paymentFields).refine(
   (data) => getTotalCollected(data) > 0,
   {
-    message: 'Total payment (rent + utilities) must be greater than RM 0.00',
+    message: 'Enter rent and/or utility amounts — total must be greater than RM 0.00',
     path: ['amount'],
   },
 )
@@ -25,7 +25,7 @@ export type PaymentFormValues = z.infer<typeof paymentSchema>
 export const editPaymentSchema = z.object(paymentFields).refine(
   (data) => getTotalCollected(data) > 0,
   {
-    message: 'Total payment (rent + utilities) must be greater than RM 0.00',
+    message: 'Enter rent and/or utility amounts — total must be greater than RM 0.00',
     path: ['amount'],
   },
 )
