@@ -1,13 +1,17 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useState } from 'react'
 import {
   Building2, LayoutDashboard, Users, FileText,
-  BarChart3, ClipboardList, Settings, LogOut,
+  BarChart3, ClipboardList, Settings, LogOut, MoreHorizontal,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/lib/AuthContext'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
@@ -28,6 +32,88 @@ const navItems: NavItem[] = [
   { to: '/audit-log',   label: 'Audit Log',   icon: ClipboardList, superAdminOnly: true },
   { to: '/settings',    label: 'Settings',    icon: Settings,      superAdminOnly: true },
 ]
+
+const MOBILE_TAB_LIMIT = 5
+
+function isNavItemActive(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+function MobileBottomNav({ items }: { items: NavItem[] }) {
+  const location = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const needsMore = items.length > MOBILE_TAB_LIMIT
+  const primaryItems = needsMore ? items.slice(0, MOBILE_TAB_LIMIT - 1) : items
+  const overflowItems = needsMore ? items.slice(MOBILE_TAB_LIMIT - 1) : []
+  const isOverflowActive = overflowItems.some((item) =>
+    isNavItemActive(location.pathname, item.to),
+  )
+
+  const tabClass = (active: boolean) =>
+    cn(
+      'flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors',
+      active ? 'text-primary' : 'text-muted-foreground',
+    )
+
+  return (
+    <>
+      <nav className="md:hidden flex border-t border-border bg-card">
+        {primaryItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => tabClass(isActive)}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.label}
+          </NavLink>
+        ))}
+
+        {needsMore && (
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={tabClass(moreOpen || isOverflowActive)}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            More
+          </button>
+        )}
+      </nav>
+
+      {needsMore && (
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8">
+            <SheetHeader className="pb-2">
+              <SheetTitle>More</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col gap-1">
+              {overflowItems.map((item) => {
+                const active = isNavItemActive(location.pathname, item.to)
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMoreOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors',
+                      active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    {item.label}
+                  </NavLink>
+                )
+              })}
+            </nav>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
+  )
+}
 
 export function AppLayout() {
   const { profile } = useAuthStore()
@@ -143,25 +229,7 @@ export function AppLayout() {
         </main>
 
         {/* Mobile Bottom Nav */}
-        <nav className="md:hidden flex border-t border-border bg-card">
-          {visibleItems.slice(0, 5).map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors',
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
-                )
-              }
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+        <MobileBottomNav items={visibleItems} />
       </div>
     </div>
   )

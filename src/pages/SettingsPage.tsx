@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
+import { removeTeamMember } from '@/lib/removeTeamMember'
 import { nameSchema, passwordSchema, type NameFormValues, type PasswordFormValues } from '@/schemas/settings'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
@@ -79,18 +80,11 @@ function RemoveDialog({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!member) return
-      const { error } = await supabase.from('user_profiles').delete().eq('id', member.id)
-      if (error) throw error
-      await logAudit({
-        action: 'USER_REMOVED',
-        target_type: 'user_profile',
-        target_id: member.id,
-        metadata: { full_name: member.full_name },
-      })
+      await removeTeamMember(member.id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] })
-      toast.success(`Access revoked for ${member?.full_name}.`)
+      toast.success(`${member?.full_name} has been removed from PRMS and Authentication.`)
       onClose()
       onDone()
     },
@@ -102,15 +96,19 @@ function RemoveDialog({
       <DialogContent className="border-border bg-card text-foreground sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-red-400 flex items-center gap-2">
-            <UserX className="h-5 w-5" /> Revoke Access
+            <UserX className="h-5 w-5" /> Remove Team Member
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1 text-sm">
-          <p className="text-white/70">Remove <span className="font-semibold text-foreground">{member?.full_name}</span> from the system?</p>
+          <p className="text-white/70">
+            Permanently remove{' '}
+            <span className="font-semibold text-foreground">{member?.full_name}</span>?
+          </p>
           <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground space-y-1">
-            <p>· Their profile will be deleted from PRMS</p>
-            <p>· Their Supabase Auth account will remain (delete it manually if needed)</p>
-            <p>· They will lose all access immediately</p>
+            <p>· Their Supabase Auth login will be deleted</p>
+            <p>· Their PRMS profile will be removed automatically</p>
+            <p>· They will lose all access immediately and cannot sign in again</p>
+            <p>· This action cannot be undone from the app</p>
           </div>
         </div>
         <DialogFooter>
@@ -118,7 +116,7 @@ function RemoveDialog({
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}
             className="bg-red-600 hover:bg-red-500 text-foreground">
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Revoke Access
+            Remove Member
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -201,9 +199,10 @@ function MemberRow({ member, currentUserId }: { member: UserProfile; currentUser
         )}
       </div>
 
-      {/* Remove button */}
-      {!isSelf && (
+      {/* Remove button — admin/operator only; super admins removed via Supabase dashboard */}
+      {!isSelf && member.role !== 'super_admin' && (
         <Button size="icon" variant="ghost" onClick={() => setShowRemove(true)}
+          title="Remove team member"
           className="h-7 w-7 text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10 shrink-0">
           <UserX className="h-3.5 w-3.5" />
         </Button>
@@ -425,6 +424,24 @@ export function SettingsPage() {
           </div>
         </Card>
 
+        {/* Remove member instructions */}
+        <Card className="border-amber-500/15 bg-amber-500/5 p-5">
+          <div className="flex gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-amber-300">Removing a team member</p>
+              <p className="text-xs text-amber-300/70">
+                Use <span className="text-muted-foreground font-medium">Remove Member</span> on an Admin or
+                Operator row to permanently delete their Supabase Auth login and PRMS profile in one step.
+              </p>
+              <p className="text-xs text-amber-300/70">
+                Super Admin accounts cannot be removed from the app. Delete those manually in{' '}
+                <span className="text-muted-foreground font-medium">Supabase Dashboard → Authentication → Users</span>.
+              </p>
+            </div>
+          </div>
+        </Card>
+
         {/* Role reference */}
         <Card className="border-border bg-card p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -467,9 +484,9 @@ export function SettingsPage() {
             <div>
               <p className="text-sm font-medium text-red-300">Danger Zone</p>
               <p className="text-xs text-red-300/60 mt-1">
-                To permanently delete a Supabase Auth account, go to{' '}
-                <span className="text-muted-foreground font-medium">Dashboard → Authentication → Users</span>{' '}
-                and delete from there. Removing a member here only revokes their PRMS access.
+                Removing an Admin or Operator permanently deletes their login and cannot be undone from
+                the app. Super Admin accounts must still be deleted manually in{' '}
+                <span className="text-muted-foreground font-medium">Dashboard → Authentication → Users</span>.
               </p>
             </div>
           </div>

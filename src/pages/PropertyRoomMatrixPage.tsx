@@ -18,6 +18,7 @@ import { RoomDialog } from '@/components/rooms/RoomDialog'
 import { PaymentModal } from '@/components/rooms/PaymentModal'
 import { RoomCard } from '@/components/rooms/RoomCard'
 import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
+import { TruncatedText } from '@/components/ui/truncated-text'
 
 export function PropertyRoomMatrixPage() {
   const { id } = useParams<{ id: string }>()
@@ -94,7 +95,9 @@ export function PropertyRoomMatrixPage() {
               ? <Skeleton className="h-7 w-40 bg-white/10" />
               : <>
                   <h1 className="text-2xl font-bold text-foreground">{property?.name}</h1>
-                  <p className="mt-0.5 text-sm text-muted-foreground/70 max-w-xs truncate">{property?.address}</p>
+                  <TruncatedText className="mt-0.5 text-sm text-muted-foreground/70 max-w-xs">
+                    {property?.address ?? ''}
+                  </TruncatedText>
                 </>
             }
           </div>

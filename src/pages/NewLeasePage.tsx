@@ -1,45 +1,65 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
-  ArrowLeft, Search, Loader2, User, Home, CheckCircle2,
-  Building2, CreditCard, CalendarDays,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
-import { logAudit } from '@/lib/audit'
-import { formatRinggit } from '@/utils/exportCsv'
-import { useProperties } from '@/hooks/useProperties'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import type { Tenant, Room } from '@/types'
+  Search,
+  Loader2,
+  User,
+  Home,
+  CheckCircle2,
+  Building2,
+  CreditCard,
+  CalendarDays,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import { formatRinggit } from '@/utils/exportCsv';
+import { useProperties } from '@/hooks/useProperties';
+import { BackNav } from '@/components/layout/BackNav';
+import { useSmartBack } from '@/hooks/useSmartBack';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from '@/components/ui/form';
+import type { Tenant, Room } from '@/types';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-const leaseSchema = z.object({
-  tenant_id:         z.string().uuid('Please select a tenant'),
-  room_id:           z.string().uuid('Please select a room'),
-  monthly_rent:      z.coerce.number().min(0, 'Monthly rent must be 0 or greater'),
-  due_day:           z.coerce.number().int().min(1).max(28),
-  move_in_date:      z.string().optional(),
-  expiry_date:       z.string().optional(),
-  security_deposit:  z.coerce.number().min(0),
-  utility_deposit:   z.coerce.number().min(0),
-  notes:             z.string().optional(),
-}).refine(d => {
-  if (!d.move_in_date || !d.expiry_date) return true;
-  return new Date(d.expiry_date) > new Date(d.move_in_date);
-}, {
-  message: 'Expiry must be after move-in date',
-  path: ['expiry_date'],
-})
-type LeaseFormValues = z.infer<typeof leaseSchema>
+const leaseSchema = z
+  .object({
+    tenant_id: z.string().uuid('Please select a tenant'),
+    room_id: z.string().uuid('Please select a room'),
+    monthly_rent: z.coerce.number().min(0, 'Monthly rent must be 0 or greater'),
+    due_day: z.coerce.number().int().min(1).max(28),
+    move_in_date: z.string().optional(),
+    expiry_date: z.string().optional(),
+    security_deposit: z.coerce.number().min(0),
+    utility_deposit: z.coerce.number().min(0),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (d) => {
+      if (!d.move_in_date || !d.expiry_date) return true;
+      return new Date(d.expiry_date) > new Date(d.move_in_date);
+    },
+    {
+      message: 'Expiry must be after move-in date',
+      path: ['expiry_date'],
+    },
+  );
+type LeaseFormValues = z.infer<typeof leaseSchema>;
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 //
@@ -50,105 +70,162 @@ function useTenants() {
   return useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('tenants').select('*').order('full_name')
-      if (error) throw error
-      return data as Tenant[]
+      const { data, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('full_name');
+      if (error) throw error;
+      return data as Tenant[];
     },
-  })
+  });
 }
 
 function useVacantRooms(propertyId: string | null) {
   return useQuery({
     queryKey: ['vacant-rooms', propertyId],
     queryFn: async () => {
-      let q = supabase.from('rooms').select('*').eq('status', 'vacant').order('room_number')
-      if (propertyId) q = q.eq('property_id', propertyId)
-      const { data, error } = await q
-      if (error) throw error
-      return data as Room[]
+      let q = supabase
+        .from('rooms')
+        .select('*')
+        .eq('status', 'vacant')
+        .order('room_number');
+      if (propertyId) q = q.eq('property_id', propertyId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as Room[];
     },
     enabled: true,
-  })
+  });
 }
 
 // ─── Tenant Picker ─────────────────────────────────────────────────────────────
 
-function TenantPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
-  const [search, setSearch] = useState('')
-  const { data: tenants } = useTenants()
-  const selected = tenants?.find(t => t.id === value)
-  const filtered = tenants?.filter(t => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return t.full_name.toLowerCase().includes(q) || (t.nric_passport && t.nric_passport.toLowerCase().includes(q)) || (t.phone && t.phone.includes(q))
-  }) ?? []
+function TenantPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const { data: tenants } = useTenants();
+  const selected = tenants?.find((t) => t.id === value);
+  const filtered =
+    tenants?.filter((t) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        t.full_name.toLowerCase().includes(q) ||
+        (t.nric_passport && t.nric_passport.toLowerCase().includes(q)) ||
+        (t.phone && t.phone.includes(q))
+      );
+    }) ?? [];
 
   if (selected) {
     return (
       <div className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
-            {selected.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+            {selected.full_name
+              .split(' ')
+              .map((n) => n[0])
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">{selected.full_name}</p>
-            <p className="text-xs text-muted-foreground">{selected.nric_passport ?? 'No NRIC'} · {selected.phone ?? 'No phone'}</p>
+            <p className="text-sm font-semibold text-foreground">
+              {selected.full_name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {selected.nric_passport ?? 'No NRIC'} ·{' '}
+              {selected.phone ?? 'No phone'}
+            </p>
           </div>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => onChange('')} className="text-muted-foreground hover:text-foreground text-xs h-7">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onChange('')}
+          className="text-muted-foreground hover:text-foreground text-xs h-7"
+        >
           Change
         </Button>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-2">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-        <Input value={search} onChange={e => setSearch(e.target.value)}
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tenant by name, NRIC, or phone…"
-          className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60 h-10" />
+          className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60 h-10"
+        />
       </div>
       <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border bg-card p-1">
         {!filtered.length ? (
           <p className="text-center text-xs text-muted-foreground/50 py-4">
-            {tenants?.length === 0 ? 'No tenants yet. Add a tenant first.' : 'No results.'}
+            {tenants?.length === 0
+              ? 'No tenants yet. Add a tenant first.'
+              : 'No results.'}
           </p>
-        ) : filtered.map(t => (
-          <button key={t.id} type="button" onClick={() => onChange(t.id)}
-            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-muted transition-colors">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-300 shrink-0">
-              {t.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm text-foreground truncate">{t.full_name}</p>
-              <p className="text-xs text-muted-foreground/70 truncate">{t.nric_passport ?? 'No NRIC'}</p>
-            </div>
-          </button>
-        ))}
+        ) : (
+          filtered.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onChange(t.id)}
+              className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-muted transition-colors"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-300 shrink-0">
+                {t.full_name
+                  .split(' ')
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-foreground truncate">
+                  {t.full_name}
+                </p>
+                <p className="text-xs text-muted-foreground/70 truncate">
+                  {t.nric_passport ?? 'No NRIC'}
+                </p>
+              </div>
+            </button>
+          ))
+        )}
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Room Picker ───────────────────────────────────────────────────────────────
 
-function RoomPicker({ value, onChange, onRentChange }: {
-  value: string
-  onChange: (id: string) => void
-  onRentChange: (rent: number) => void
+function RoomPicker({
+  value,
+  onChange,
+  onRentChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  onRentChange: (rent: number) => void;
 }) {
-  const [propertyId, setPropertyId] = useState<string | null>(null)
-  const { data: properties } = useProperties()
-  const { data: rooms } = useVacantRooms(propertyId)
-  const selectedRoom = rooms?.find(r => r.id === value)
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const { data: properties } = useProperties();
+  const { data: rooms } = useVacantRooms(propertyId);
+  const selectedRoom = rooms?.find((r) => r.id === value);
 
   /** Change the property filter and clear any selected room to prevent stale room_id
    *  being submitted when the previously-selected room is not in the new filter. */
   function handlePropertyChange(newPropertyId: string | null) {
-    setPropertyId(newPropertyId)
-    if (value) onChange('')   // clear selection if a room was already chosen
+    setPropertyId(newPropertyId);
+    if (value) onChange(''); // clear selection if a room was already chosen
   }
 
   if (selectedRoom) {
@@ -159,34 +236,54 @@ function RoomPicker({ value, onChange, onRentChange }: {
             <Home className="h-4 w-4 text-violet-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Room {selectedRoom.code}</p>
-            <p className="text-xs text-muted-foreground">Base rent: {formatRinggit(selectedRoom.base_rent)}</p>
+            <p className="text-sm font-semibold text-foreground">
+              Room {selectedRoom.code}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Base rent: {formatRinggit(selectedRoom.base_rent)}
+            </p>
           </div>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => onChange('')} className="text-muted-foreground hover:text-foreground text-xs h-7">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onChange('')}
+          className="text-muted-foreground hover:text-foreground text-xs h-7"
+        >
           Change
         </Button>
       </div>
-    )
+    );
   }
 
-  const filteredRooms = rooms ?? []
+  const filteredRooms = rooms ?? [];
 
   return (
     <div className="space-y-3">
       {/* Property filter */}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => handlePropertyChange(null)}
+        <button
+          type="button"
+          onClick={() => handlePropertyChange(null)}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-            !propertyId ? 'border-violet-500/40 bg-violet-500/15 text-violet-300' : 'border-border bg-card text-muted-foreground hover:border-white/15'
-          }`}>
+            !propertyId
+              ? 'border-violet-500/40 bg-violet-500/15 text-violet-300'
+              : 'border-border bg-card text-muted-foreground hover:border-white/15'
+          }`}
+        >
           All Properties
         </button>
-        {properties?.map(p => (
-          <button key={p.id} type="button" onClick={() => handlePropertyChange(p.id)}
+        {properties?.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => handlePropertyChange(p.id)}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-              propertyId === p.id ? 'border-violet-500/40 bg-violet-500/15 text-violet-300' : 'border-border bg-card text-muted-foreground hover:border-white/15'
-            }`}>
+              propertyId === p.id
+                ? 'border-violet-500/40 bg-violet-500/15 text-violet-300'
+                : 'border-border bg-card text-muted-foreground hover:border-white/15'
+            }`}
+          >
             {p.name}
           </button>
         ))}
@@ -197,46 +294,66 @@ function RoomPicker({ value, onChange, onRentChange }: {
         <div className="rounded-xl border border-border bg-card p-6 text-center">
           <Home className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
           <p className="text-xs text-muted-foreground/70">
-            {propertyId ? 'No vacant rooms in this property.' : 'No vacant rooms available.'}
+            {propertyId
+              ? 'No vacant rooms in this property.'
+              : 'No vacant rooms available.'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-52 overflow-y-auto rounded-xl border border-border bg-card p-2">
-          {filteredRooms.map(room => (
-            <button key={room.id} type="button"
-              onClick={() => { onChange(room.id); onRentChange(room.base_rent) }}
+          {filteredRooms.map((room) => (
+            <button
+              key={room.id}
+              type="button"
+              onClick={() => {
+                onChange(room.id);
+                onRentChange(room.base_rent);
+              }}
               className="rounded-lg border border-border bg-card p-2.5 text-left
-                         hover:border-violet-500/40 hover:bg-violet-500/10 transition-all">
+                         hover:border-violet-500/40 hover:bg-violet-500/10 transition-all"
+            >
               <p className="text-xs font-bold text-foreground">{room.code}</p>
-              <p className="text-[10px] text-muted-foreground/70 mt-0.5">{formatRinggit(room.base_rent)}</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                {formatRinggit(room.base_rent)}
+              </p>
             </button>
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ─── Form field wrapper ───────────────────────────────────────────────────────
 
-function FieldRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function FieldRow({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid sm:grid-cols-[180px_1fr] gap-2 items-start">
       <label className="text-sm text-muted-foreground pt-2.5">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       <div>{children}</div>
     </div>
-  )
+  );
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export function NewLeasePage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
-  const prefillTenantId = searchParams.get('tenant')
+  const navigate = useNavigate();
+  const goBack = useSmartBack('/leases');
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const prefillTenantId = searchParams.get('tenant');
 
   const form = useForm<LeaseFormValues>({
     resolver: zodResolver(leaseSchema) as any,
@@ -251,7 +368,7 @@ export function NewLeasePage() {
       utility_deposit: 0,
       notes: '',
     },
-  })
+  });
 
   const mutation = useMutation({
     mutationFn: async (values: LeaseFormValues) => {
@@ -259,42 +376,46 @@ export function NewLeasePage() {
       const { data: lease, error: leaseErr } = await supabase
         .from('leases')
         .insert({
-          tenant_id:        values.tenant_id,
-          room_id:          values.room_id,
-          monthly_rent:     values.monthly_rent,
-          due_day:          values.due_day,
-          move_in_date:     values.move_in_date || null,
-          expiry_date:      values.expiry_date || null,
+          tenant_id: values.tenant_id,
+          room_id: values.room_id,
+          monthly_rent: values.monthly_rent,
+          due_day: values.due_day,
+          move_in_date: values.move_in_date || null,
+          expiry_date: values.expiry_date || null,
           security_deposit: values.security_deposit,
-          utility_deposit:  values.utility_deposit,
-          notes:            values.notes?.trim() || null,
-          status:           'active',
+          utility_deposit: values.utility_deposit,
+          notes: values.notes?.trim() || null,
+          status: 'active',
         })
         .select()
-        .single()
-      if (leaseErr) throw leaseErr
+        .single();
+      if (leaseErr) throw leaseErr;
 
       await logAudit({
         action: 'LEASE_CREATED',
         target_type: 'lease',
         target_id: lease.id,
-        metadata: { tenant_id: values.tenant_id, room_id: values.room_id, monthly_rent: values.monthly_rent },
-      })
-      return lease
+        metadata: {
+          tenant_id: values.tenant_id,
+          room_id: values.room_id,
+          monthly_rent: values.monthly_rent,
+        },
+      });
+      return lease;
     },
     onSuccess: (lease) => {
-      queryClient.invalidateQueries({ queryKey: ['leases'] })
-      queryClient.invalidateQueries({ queryKey: ['tenants'] })
-      queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success('Lease created successfully.')
-      navigate(`/leases/${lease.id}`, { replace: true })
+      queryClient.invalidateQueries({ queryKey: ['leases'] });
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['room-matrix'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Lease created successfully.');
+      navigate(`/leases/${lease.id}`, { replace: true });
     },
     onError: (err: Error) => toast.error(err.message),
-  })
+  });
 
-  const tenantId = form.watch('tenant_id')
-  const roomId   = form.watch('room_id')
+  const tenantId = form.watch('tenant_id');
+  const roomId = form.watch('room_id');
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
@@ -304,171 +425,271 @@ export function NewLeasePage() {
 
       {/* Header */}
       <div className="mb-8">
-        <button onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white/70 transition-colors mb-4">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <BackNav to="/leases" label="Back" className="mb-4" />
         <h1 className="text-2xl font-bold text-foreground">New Lease</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Assign a tenant to a vacant room with a new contract.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Assign a tenant to a vacant room with a new contract.
+        </p>
       </div>
 
       <div className="max-w-2xl">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-5">
-
+          <form
+            onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+            className="space-y-5"
+          >
             {/* Step 1: Tenant */}
             <Card className="border-border bg-card p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">1</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
+                  1
+                </div>
                 <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
                   <User className="h-4 w-4 text-violet-400" /> Select Tenant
                 </h2>
-                {tenantId && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />}
+                {tenantId && (
+                  <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />
+                )}
               </div>
-              <FormField control={form.control} name="tenant_id" render={({ field }) => (
-                <FormItem>
-                  <TenantPicker value={field.value} onChange={field.onChange} />
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="tenant_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <TenantPicker
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Card>
 
             {/* Step 2: Room */}
             <Card className="border-border bg-card p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">2</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
+                  2
+                </div>
                 <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
-                  <Building2 className="h-4 w-4 text-violet-400" /> Select Vacant Room
+                  <Building2 className="h-4 w-4 text-violet-400" /> Select
+                  Vacant Room
                 </h2>
-                {roomId && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />}
+                {roomId && (
+                  <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />
+                )}
               </div>
-              <FormField control={form.control} name="room_id" render={({ field }) => (
-                <FormItem>
-                  <RoomPicker
-                    value={field.value}
-                    onChange={field.onChange}
-                    onRentChange={rent => form.setValue('monthly_rent', rent)}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="room_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <RoomPicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      onRentChange={(rent) =>
+                        form.setValue('monthly_rent', rent)
+                      }
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Card>
 
             {/* Step 3: Lease terms */}
             <Card className="border-border bg-card p-6 space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">3</div>
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
+                  3
+                </div>
                 <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
                   <CreditCard className="h-4 w-4 text-violet-400" /> Lease Terms
                 </h2>
               </div>
 
               <FieldRow label="Monthly Rent (RM)" required>
-                <FormField control={form.control} name="monthly_rent" render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input type="number" step="0.01" min="0"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                        {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground/50">Use 0 if the tenant only pays utilities (e.g. electricity).</p>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="monthly_rent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground/50">
+                        Use 0 if the tenant only pays utilities (e.g.
+                        electricity).
+                      </p>
+                    </FormItem>
+                  )}
+                />
               </FieldRow>
 
               <FieldRow label="Due Day" required>
-                <FormField control={form.control} name="due_day" render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input type="number" min="1" max="28" placeholder="e.g. 1"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                        {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground/50">Day of each month rent is due (1–28)</p>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="due_day"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="28"
+                          placeholder="e.g. 1"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground/50">
+                        Day of each month rent is due (1–28)
+                      </p>
+                    </FormItem>
+                  )}
+                />
               </FieldRow>
 
               <Separator className="bg-white/8" />
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="move_in_date" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-muted-foreground text-xs flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" /> Move-in Date (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer"
-                        onClick={e => e.currentTarget.showPicker?.()}
-                        {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="move_in_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground text-xs flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" /> Move-in Date
+                        (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer"
+                          onClick={(e) => e.currentTarget.showPicker?.()}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <FormField control={form.control} name="expiry_date" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-muted-foreground text-xs flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" /> Lease Expiry Date (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer"
-                        onClick={e => e.currentTarget.showPicker?.()}
-                        {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="expiry_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground text-xs flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" /> Lease Expiry
+                        Date (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 cursor-pointer"
+                          onClick={(e) => e.currentTarget.showPicker?.()}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <Separator className="bg-white/8" />
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="security_deposit" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-muted-foreground text-xs">Security Deposit (RM)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" min="0" placeholder="0"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                        {...field} />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground/50">Informational only — not billed monthly</p>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="security_deposit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground text-xs">
+                        Security Deposit (RM)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground/50">
+                        Informational only — not billed monthly
+                      </p>
+                    </FormItem>
+                  )}
+                />
 
-                <FormField control={form.control} name="utility_deposit" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-muted-foreground text-xs">Utility Deposit (RM)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" min="0" placeholder="0"
-                        className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                        {...field} />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground/50">Informational only — not billed monthly</p>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="utility_deposit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-muted-foreground text-xs">
+                        Utility Deposit (RM)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0"
+                          className="bg-muted border-border text-foreground focus:border-violet-500/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground/50">
+                        Informational only — not billed monthly
+                      </p>
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-muted-foreground text-xs">Notes (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Any special conditions or remarks…"
-                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
-                      {...field} />
-                  </FormControl>
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-muted-foreground text-xs">
+                      Notes (optional)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Any special conditions or remarks…"
+                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/60"
+                        {...field}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </Card>
 
             <Separator className="bg-white/8" />
 
             <div className="flex items-center justify-between">
-              <Button type="button" variant="ghost" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={goBack}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 Cancel
               </Button>
               <Button
@@ -476,7 +697,9 @@ export function NewLeasePage() {
                 disabled={mutation.isPending || !tenantId || !roomId}
                 className="bg-primary text-primary-foreground font-semibold px-8 shadow-lg shadow-violet-500/20 disabled:opacity-40"
               >
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {mutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 {mutation.isPending ? 'Creating…' : 'Create Lease'}
               </Button>
             </div>
@@ -484,5 +707,5 @@ export function NewLeasePage() {
         </Form>
       </div>
     </div>
-  )
+  );
 }

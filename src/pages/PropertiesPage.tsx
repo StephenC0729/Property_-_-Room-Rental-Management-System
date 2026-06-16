@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { TruncatedText } from '@/components/ui/truncated-text'
 import type { Property } from '@/types'
 
 
@@ -174,7 +175,9 @@ function PropertyCard({ property, stats, statsLoading, isAdmin, onEdit }: Proper
             </div>
             <div>
               <h3 className="font-semibold text-foreground leading-tight">{property.name}</h3>
-              <p className="text-xs text-muted-foreground/70 mt-0.5 max-w-[200px] truncate">{property.address}</p>
+              <TruncatedText className="text-xs text-muted-foreground/70 mt-0.5 max-w-[200px]">
+                {property.address}
+              </TruncatedText>
             </div>
           </div>
           {isAdmin && (

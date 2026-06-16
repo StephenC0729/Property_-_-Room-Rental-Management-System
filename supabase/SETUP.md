@@ -130,6 +130,49 @@ Try logging in with your Super Admin credentials.
 
 ---
 
+## Step 7 — Deploy the Remove Team Member Edge Function
+
+Removing Admin or Operator accounts from **Settings** requires a Supabase Edge Function
+(`remove-team-member`). It deletes the Auth user server-side; the `user_profiles` row
+is removed automatically via `ON DELETE CASCADE`.
+
+Super Admin accounts **cannot** be removed from the app — delete those manually in
+**Authentication → Users** if needed.
+
+### Option A — Supabase CLI (recommended)
+
+1. Install the [Supabase CLI](https://supabase.com/docs/guides/cli) if you have not already
+2. Log in and link your project:
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+```
+
+3. Deploy the function:
+
+```bash
+supabase functions deploy remove-team-member
+```
+
+JWT verification is enabled in `supabase/config.toml` — only authenticated callers
+can invoke the function; the function itself checks that the caller is a Super Admin.
+
+### Option B — Supabase Dashboard
+
+1. Go to **Edge Functions → Create a new function**
+2. Name it `remove-team-member`
+3. Paste the contents of `supabase/functions/remove-team-member/index.ts`
+4. Deploy
+
+### Verify deployment
+
+From the Supabase dashboard, open **Edge Functions** and confirm `remove-team-member`
+is listed and active. Removing an Admin or Operator from **Settings → Team Members**
+should delete them from **Authentication → Users** as well.
+
+---
+
 ## What Was Created
 
 | Object | Type | Purpose |
@@ -145,3 +188,4 @@ Try logging in with your Super Admin credentials.
 | `room_billing_status_v` | View | Live billing status per room (drives the Room Matrix) |
 | `sync_room_status_on_lease_change` | Trigger | Auto-flips room to occupied/vacant when lease changes |
 | `get_monthly_report()` | Function | Powers the Reports page for any given month |
+| `remove-team-member` | Edge Function | Deletes Admin/Operator Auth accounts from Settings (Super Admin only) |

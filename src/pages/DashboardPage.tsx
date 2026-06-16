@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Building2, Home, AlertCircle, CheckCircle2,
   TrendingUp, Wallet, CalendarX2, Users, ClipboardList,
-  Settings, ArrowRight, CircleDot, Wrench,
+  Settings, ArrowRight, CircleDot, Wrench, Info,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TruncatedText } from '@/components/ui/truncated-text'
 import { QueryErrorState, getQueryErrorMessage } from '@/components/ui/query-error-state'
 import { format } from 'date-fns'
 import { formatRinggit } from '@/utils/exportCsv'
@@ -151,6 +152,7 @@ function QuickAction({ to, icon: Icon, label, description, color }: {
 // ─── Role-specific views ───────────────────────────────────────────────────────
 
 function OperatorDashboard() {
+  const { role } = useAuthStore()
   const { data: properties, isLoading: propsLoading, isError: propsError, error: propsQueryError, refetch: refetchProperties } = useProperties()
   const { data: roomStats, isLoading: statsLoading } = usePropertyRoomStats()
   const { data: billing } = useBillingSummary()
@@ -158,6 +160,27 @@ function OperatorDashboard() {
 
   return (
     <div className="space-y-6">
+      {role === 'operator' && (
+        <Card className="border-blue-500/15 bg-blue-500/5 p-5">
+          <div className="flex gap-3">
+            <Info className="h-5 w-5 shrink-0 text-blue-400 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-blue-300">Operator workspace</p>
+              <p className="text-sm text-blue-300/80">
+                Select a property below to view rooms, check payment status, and log rent payments.
+                Tenant and lease changes are handled by admins — contact your admin if you need help with those.
+              </p>
+              <Link
+                to="/properties"
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Open Properties <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Overdue alert */}
       {totalOverdue > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-4">
@@ -206,7 +229,9 @@ function OperatorDashboard() {
                       )}
                     </div>
                     <p className="font-semibold text-foreground">{property.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{property.address}</p>
+                    <TruncatedText className="text-xs text-muted-foreground mt-0.5">
+                      {property.address}
+                    </TruncatedText>
                     <div className="mt-4 flex items-center gap-3 text-xs">
                       <span className="flex items-center gap-1 text-emerald-500">
                         <CheckCircle2 className="h-3 w-3" /> {stats.paid} paid

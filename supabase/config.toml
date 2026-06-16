@@ -1,0 +1,5 @@
+# Supabase local/dev configuration.
+# See https://supabase.com/docs/guides/cli/config
+
+[functions.remove-team-member]
+verify_jwt = true
