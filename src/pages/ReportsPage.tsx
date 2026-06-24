@@ -51,7 +51,6 @@ function reportRowToRoom(row: ReportRow): RoomBillingStatus & { property_id: str
     room_status: row.status === 'vacant' || row.status === 'maintenance' ? row.status : 'occupied',
     billing_status: row.status as BillingStatus,
     tenant_name: row.tenant_name,
-    tenant_phone: null,
     lease_id: row.lease_id,
     monthly_rent: row.monthly_rent,
     due_day: null,

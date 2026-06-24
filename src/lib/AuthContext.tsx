@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setProfile(data)
+      await expireOverdueLeases(data.role)
     }
 
     // Check existing session on mount. setInitialized() MUST run in finally so
@@ -47,7 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error
 
         if (session?.user) {
-          await expireOverdueLeases()
           await fetchProfile(session.user.id)
         } else {
           clearAuth()
@@ -66,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          await expireOverdueLeases()
           await fetchProfile(session.user.id)
         } else if (event === 'SIGNED_OUT') {
           clearAuth()

@@ -44,7 +44,6 @@ export interface RoomBillingStatus {
   room_status: RoomStatus
   billing_status: BillingStatus
   tenant_name: string | null
-  tenant_phone: string | null
   lease_id: string | null
   monthly_rent: number | null
   due_day: number | null

@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { expireOverdueLeases } from '@/lib/leases'
 
 export interface PropertyRoomStats {
   paid: number
@@ -21,7 +20,6 @@ export function usePropertyRoomStats() {
   return useQuery({
     queryKey: ['properties', 'room-stats'],
     queryFn: async () => {
-      await expireOverdueLeases()
       const { data, error } = await supabase
         .from('room_billing_status_v')
         .select('property_id, billing_status')

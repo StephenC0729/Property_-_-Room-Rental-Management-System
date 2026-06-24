@@ -7,6 +7,7 @@ import { Loader2, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { logAudit } from '@/lib/audit'
+import { getTenantContactForPayment } from '@/lib/tenants'
 import { buildWhatsAppReceiptLink, getCurrentBillingMonth, formatBillingMonthKey } from '@/utils/whatsapp'
 import { parseBillingMonthKey } from '@/utils/billingMonth'
 import { useBillingMonthOptions } from '@/hooks/useBillingMonthOptions'
@@ -120,13 +121,16 @@ export function PaymentModal({ open, onClose, room, defaultBillingMonth }: Payme
         },
       })
 
+      const contact = await getTenantContactForPayment(room.lease_id)
+
       return {
         rent: values.amount,
         total: getTotalCollected(values),
         billingMonth,
+        contact,
       }
     },
-    onSuccess: ({ rent, total, billingMonth }) => {
+    onSuccess: ({ rent, total, billingMonth, contact }) => {
       queryClient.invalidateQueries({ queryKey: ['room-matrix'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['properties', 'room-stats'] })
@@ -138,13 +142,13 @@ export function PaymentModal({ open, onClose, room, defaultBillingMonth }: Payme
           : `Payment of ${formatRinggit(rent)} recorded.`
       )
 
-      if (currentRoom?.tenant_phone) {
+      if (contact?.phone) {
         setLastPayment({ amount: rent, total, billingMonth })
         setWhatsappUrl(buildWhatsAppReceiptLink({
-          phone: currentRoom.tenant_phone,
-          tenantName: currentRoom.tenant_name ?? 'Tenant',
+          phone: contact.phone,
+          tenantName: contact.full_name ?? currentRoom?.tenant_name ?? 'Tenant',
           amount: total,
-          roomCode: currentRoom.room_code,
+          roomCode: currentRoom!.room_code,
           billingMonth: parseBillingMonthKey(billingMonth),
         }))
       } else {
