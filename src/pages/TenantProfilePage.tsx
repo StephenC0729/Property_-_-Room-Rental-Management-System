@@ -10,6 +10,7 @@ import {
   Phone,
   CreditCard,
   AlertCircle,
+  AlertTriangle,
   Home,
   FileText,
   Check,
@@ -35,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { FlagTenantDialog } from '@/components/tenants/FlagTenantDialog';
 import {
   Form,
   FormField,
@@ -449,6 +451,7 @@ export function TenantProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [showFlag, setShowFlag] = useState(false);
 
   const { data: tenant, isLoading } = useTenantDetail(id!);
 
@@ -518,16 +521,42 @@ export function TenantProfilePage() {
             </div>
           </div>
           {isAdmin() && !isEditing && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditing(true)}
-              className="text-muted-foreground hover:text-foreground border border-border hover:border-white/20"
-            >
-              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowFlag(true)}
+                className={
+                  tenant.is_flagged
+                    ? 'text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50'
+                    : 'text-muted-foreground hover:text-foreground border border-border hover:border-white/20'
+                }
+              >
+                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
+                {tenant.is_flagged ? 'Flagged' : 'Flag'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsEditing(true)}
+                className="text-muted-foreground hover:text-foreground border border-border hover:border-white/20"
+              >
+                <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+              </Button>
+            </div>
           )}
         </div>
+
+        {/* Risk flag banner */}
+        {tenant.is_flagged && (
+          <div className="flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3">
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-red-300">
+              <span className="font-semibold">Flagged tenant.</span>{' '}
+              {tenant.flag_reason ?? 'Marked as a risk.'}
+            </div>
+          </div>
+        )}
 
         {/* Active lease banner */}
         {activeLease && (
@@ -631,6 +660,14 @@ export function TenantProfilePage() {
           )}
         </div>
       </div>
+
+      {isAdmin() && (
+        <FlagTenantDialog
+          open={showFlag}
+          onClose={() => setShowFlag(false)}
+          tenant={tenant}
+        />
+      )}
     </div>
   );
 }

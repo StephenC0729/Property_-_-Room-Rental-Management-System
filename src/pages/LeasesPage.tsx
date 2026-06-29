@@ -54,14 +54,35 @@ function useLeases() {
   })
 }
 
+// ─── Arrears hook ────────────────────────────────────────────────────────────
+
+/** Map of lease_id -> cumulative rent arrears, for surfacing "behind" badges. */
+function useArrearsMap() {
+  return useQuery({
+    queryKey: ['lease-arrears'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lease_arrears_v')
+        .select('lease_id, rent_arrears')
+      if (error) throw error
+      const map: Record<string, number> = {}
+      ;(data ?? []).forEach(r => {
+        map[r.lease_id as string] = Number(r.rent_arrears ?? 0)
+      })
+      return map
+    },
+  })
+}
+
 // ─── Lease Row ─────────────────────────────────────────────────────────────────
 
-function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
+function LeaseRow({ lease, arrears }: { lease: LeaseWithDetails; arrears: number }) {
   const status = lease.status as LeaseStatus
   const badge = getLeaseStatusBadge(status)
   const expiryDate = lease.expiry_date ? new Date(lease.expiry_date) : null
   const daysToExpiry = expiryDate ? differenceInDays(expiryDate, new Date()) : null
   const expiringWarning = status === 'active' && daysToExpiry !== null && daysToExpiry >= 0 && daysToExpiry <= 30
+  const behind = status === 'active' && arrears > 0
   const initials = lease.tenants?.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() ?? '?'
 
   return (
@@ -80,6 +101,11 @@ function LeaseRow({ lease }: { lease: LeaseWithDetails }) {
             <Home className="h-3 w-3 shrink-0" />
             {lease.rooms?.properties?.name ?? '—'} · Room {lease.rooms?.code ?? '—'}
           </p>
+          {behind && (
+            <span className="mt-1 inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400">
+              {formatRinggit(arrears)} behind
+            </span>
+          )}
         </div>
 
         {/* Rent */}
@@ -114,6 +140,7 @@ export function LeasesPage() {
   const [activeTab, setActiveTab] = useState<LeaseStatus | 'all'>('all')
   const [search, setSearch] = useState('')
   const { data: leases, isLoading, isError, error, refetch } = useLeases()
+  const { data: arrearsMap } = useArrearsMap()
 
   const tabFiltered = leases?.filter(l =>
     activeTab === 'all' ? true : l.status === activeTab
@@ -225,7 +252,9 @@ export function LeasesPage() {
         </Card>
       ) : (
         <div className="space-y-1.5">
-          {filtered.map(lease => <LeaseRow key={lease.id} lease={lease} />)}
+          {filtered.map(lease => (
+            <LeaseRow key={lease.id} lease={lease} arrears={arrearsMap?.[lease.id] ?? 0} />
+          ))}
         </div>
       )}
 

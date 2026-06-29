@@ -13,6 +13,7 @@ import {
   Building2,
   CreditCard,
   CalendarDays,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -123,34 +124,45 @@ function TenantPicker({
 
   if (selected) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
-            {selected.full_name
-              .split(' ')
-              .map((n) => n[0])
-              .slice(0, 2)
-              .join('')
-              .toUpperCase()}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300">
+              {selected.full_name
+                .split(' ')
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {selected.full_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {selected.nric_passport ?? 'No NRIC'} ·{' '}
+                {selected.phone ?? 'No phone'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {selected.full_name}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {selected.nric_passport ?? 'No NRIC'} ·{' '}
-              {selected.phone ?? 'No phone'}
-            </p>
-          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onChange('')}
+            className="text-muted-foreground hover:text-foreground text-xs h-7"
+          >
+            Change
+          </Button>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onChange('')}
-          className="text-muted-foreground hover:text-foreground text-xs h-7"
-        >
-          Change
-        </Button>
+        {selected.is_flagged && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold">Flagged tenant.</span>{' '}
+              {selected.flag_reason ?? 'Marked as a risk before re-leasing.'}
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -190,8 +202,16 @@ function TenantPicker({
                   .toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-foreground truncate">
+                <p className="text-sm text-foreground truncate flex items-center gap-1.5">
                   {t.full_name}
+                  {t.is_flagged && (
+                    <span
+                      title={t.flag_reason ?? 'Flagged tenant'}
+                      className="inline-flex items-center gap-0.5 rounded-full border border-red-500/25 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-400 shrink-0"
+                    >
+                      <AlertTriangle className="h-2.5 w-2.5" /> Flagged
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground/70 truncate">
                   {t.nric_passport ?? 'No NRIC'}

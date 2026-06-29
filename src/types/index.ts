@@ -64,6 +64,9 @@ export interface Tenant {
   emergency_relation: string | null
   emergency_phone: string | null
   notes: string | null
+  is_flagged: boolean
+  flag_reason: string | null
+  flagged_at: string | null
   created_at: string
   created_by: string | null
 }
@@ -116,6 +119,39 @@ export interface Payment {
   tenant?: Tenant
 }
 
+// ─── Lease Settlements (move-out) ────────────────────────────────────────────
+
+export type SettlementOutcome = 'settled' | 'partial' | 'written_off'
+
+export interface LeaseSettlement {
+  id: string
+  lease_id: string
+  rent_outstanding: number
+  other_deductions: number
+  deposit_available: number
+  deposit_applied: number
+  deposit_refunded: number
+  amount_written_off: number
+  outcome: SettlementOutcome
+  reason: string | null
+  notes: string | null
+  settled_by: string | null
+  settled_at: string
+}
+
+/** Cumulative rent arrears for a lease (lease_arrears_v). */
+export interface LeaseArrears {
+  lease_id: string
+  room_id: string
+  tenant_id: string
+  monthly_rent: number
+  status: LeaseStatus
+  months_billed: number
+  rent_due: number
+  rent_paid: number
+  rent_arrears: number
+}
+
 // ─── Audit Log ───────────────────────────────────────────────────────────────
 
 export type AuditAction =
@@ -124,9 +160,11 @@ export type AuditAction =
   | 'PAYMENT_DELETED'
   | 'TENANT_CREATED'
   | 'TENANT_UPDATED'
+  | 'TENANT_FLAGGED'
   | 'LEASE_CREATED'
   | 'LEASE_UPDATED'
   | 'LEASE_TERMINATED'
+  | 'LEASE_SETTLED'
   | 'ROOM_STATUS_CHANGED'
   | 'PROPERTY_CREATED'
   | 'PROPERTY_UPDATED'

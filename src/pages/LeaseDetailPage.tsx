@@ -31,8 +31,9 @@ import {
 import { InfoGrid } from '@/components/leases/InfoGrid';
 import { MethodBadge } from '@/components/leases/MethodBadge';
 import { StatusInfo } from '@/components/leases/StatusInfo';
-import { TerminateDialog } from '@/components/leases/TerminateDialog';
+import { SettlementDialog } from '@/components/leases/SettlementDialog';
 import { EditLeaseDialog } from '@/components/leases/EditLeaseDialog';
+import { useLeaseSettlement } from '@/hooks/useLeaseSettlement';
 import { EditPaymentDialog } from '@/components/payments/EditPaymentDialog';
 import { useUIStore } from '@/store/uiStore';
 import { BackNav } from '@/components/layout/BackNav';
@@ -48,6 +49,7 @@ export function LeaseDetailPage() {
 
   const { data: lease, isLoading } = useLeaseDetail(id!);
   const { data: payments, isLoading: paymentsLoading } = usePaymentHistory(id!);
+  const { data: settlement } = useLeaseSettlement(id!);
 
   const totalPaid =
     payments?.reduce((s, p) => s + getTotalCollected(p), 0) ?? 0;
@@ -121,7 +123,7 @@ export function LeaseDetailPage() {
                 onClick={() => openModal('terminate-lease')}
                 className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-0"
               >
-                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Terminate
+                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Move Out
               </Button>
             </div>
           )}
@@ -129,6 +131,73 @@ export function LeaseDetailPage() {
 
         {/* Status alert */}
         <StatusInfo lease={lease} />
+
+        {/* Move-out settlement summary */}
+        {settlement && (
+          <Card className="border-amber-500/20 bg-amber-500/5 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-amber-300 flex items-center gap-1.5">
+                <Wallet className="h-4 w-4" /> Move-out Settlement
+              </h2>
+              <Badge
+                className={`text-xs ${
+                  settlement.outcome === 'written_off'
+                    ? 'bg-red-500/15 text-red-400 border-red-500/25'
+                    : settlement.outcome === 'partial'
+                      ? 'bg-orange-500/15 text-orange-400 border-orange-500/25'
+                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                }`}
+              >
+                {settlement.outcome === 'written_off'
+                  ? 'Bad debt written off'
+                  : settlement.outcome === 'partial'
+                    ? 'Partially settled'
+                    : 'Settled'}
+              </Badge>
+            </div>
+            <InfoGrid
+              items={[
+                {
+                  label: 'Rent Outstanding',
+                  value: formatRinggit(settlement.rent_outstanding),
+                },
+                {
+                  label: 'Other Deductions',
+                  value: formatRinggit(settlement.other_deductions),
+                },
+                {
+                  label: 'Deposit Applied',
+                  value: formatRinggit(settlement.deposit_applied),
+                },
+                {
+                  label: 'Deposit Refunded',
+                  value: formatRinggit(settlement.deposit_refunded),
+                },
+                {
+                  label: 'Written Off',
+                  value: formatRinggit(settlement.amount_written_off),
+                  highlight: settlement.amount_written_off > 0,
+                },
+                {
+                  label: 'Settled On',
+                  value: format(new Date(settlement.settled_at), 'dd MMM yyyy'),
+                },
+              ]}
+            />
+            {settlement.reason && (
+              <div>
+                <p className="text-xs text-muted-foreground/70 mb-1">Reason</p>
+                <p className="text-sm text-white/70">{settlement.reason}</p>
+              </div>
+            )}
+            {settlement.notes && (
+              <div>
+                <p className="text-xs text-muted-foreground/70 mb-1">Notes</p>
+                <p className="text-sm text-white/70">{settlement.notes}</p>
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Lease details */}
         <Card className="border-border bg-card p-6 space-y-5">
@@ -377,7 +446,7 @@ export function LeaseDetailPage() {
       </div>
 
       {lease && (
-        <TerminateDialog
+        <SettlementDialog
           lease={lease}
           open={activeModal === 'terminate-lease'}
           onClose={closeModal}

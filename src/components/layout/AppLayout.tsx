@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Building2, LayoutDashboard, Users, FileText,
-  BarChart3, ClipboardList, Settings, LogOut, MoreHorizontal,
+  BarChart3, ClipboardList, Settings, LogOut, MoreHorizontal, Ban,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/lib/AuthContext'
@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { to: '/tenants',     label: 'Tenants',     icon: Users,         adminOnly: true },
   { to: '/leases',      label: 'Leases',      icon: FileText,      adminOnly: true },
   { to: '/reports',     label: 'Reports',     icon: BarChart3,     adminOnly: true },
+  { to: '/bad-debt',    label: 'Bad Debt',    icon: Ban,           adminOnly: true },
   { to: '/audit-log',   label: 'Audit Log',   icon: ClipboardList, superAdminOnly: true },
   { to: '/settings',    label: 'Settings',    icon: Settings,      superAdminOnly: true },
 ]

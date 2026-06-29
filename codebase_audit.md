@@ -1,248 +1,113 @@
-# PRMS — Full Codebase Audit
+# PRMS — Codebase Audit
 
 ## Overall Assessment
 
-The project is in **good shape** — clean architecture, well-organized file structure, consistent design language, and solid use of React Query + Supabase. The patterns are professional and maintainable. Below are specific issues and improvements organized from most impactful to least.
+The project is in **excellent shape** — clean architecture, well-organized file structure, consistent design language, solid use of React Query + Supabase, and proper role-based access enforcement at both the UI and DB level. The patterns are professional and maintainable.
 
 ---
 
-## 🔴 High Priority — Bugs & Correctness Issues
+## 🟠 Medium Priority — Correctness & Robustness
 
-### 1. Auth state is persisted in localStorage via Zustand, but never re-validated on load
-**File:** [`authStore.ts`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/store/authStore.ts)
+### 1. Historical report includes terminated/expired leases with no expiry date
+**File:** [`ReportsPage.tsx`](src/pages/ReportsPage.tsx) — `useHistoricalReport`
 
-The `profile` and `role` are persisted across sessions via `zustand/persist`. When the app loads, it renders immediately with the stale localStorage role **before** `supabase.auth.getSession()` resolves. This means:
-- A revoked or deleted user can still see their old role for a brief moment (or if auth fails silently).
-- `isLoading: true` is the initial state but the `profile` from localStorage is already populated — so any `isLoading` check doesn't hide role-gated UI.
+The historical report fetches **all** leases from the database and filters them client-side using `isLeaseActiveInBillingMonth()`. That function checks `move_in_date` / `expiry_date` / `created_at`, but it does **not** check `lease.status`. A lease terminated mid-month with no `expiry_date` set (or an `expiry_date` after the billing month) will still appear in old reports as "overdue", inflating the outstanding balance shown for that period.
 
-**Fix:** Don't persist `profile`/`role`. Instead, always derive the session from Supabase on mount, and show a full-screen loading state until the session check completes.
+**Fix:** Add `.in('status', ['active', 'expired', 'terminated'])` with a status-aware date filter, or preferably filter out leases where `status = 'terminated'` and `expiry_date` falls before the billing month start.
 
 ---
 
-### 2. `logAudit` in Settings uses the wrong action enum for user actions
-**File:** [`SettingsPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/SettingsPage.tsx#L84)
+### 2. Current-month supplement utility breakdown is keyed by `room_id`; historical is keyed by `lease_id`
+**File:** [`ReportsPage.tsx`](src/pages/ReportsPage.tsx) — `useCurrentMonthSupplement`
 
-```typescript
-// Line 84
-action: 'TENANT_UPDATED', // closest existing action; ideally USER_REMOVED
-```
+If a room had a tenant changeover mid-month (old lease ended, new lease started), the current-month supplement aggregates both tenants' utility payments together under the same `room_id`. The historical path avoids this by keying on `lease_id`. The mismatch means a changeover month could attribute the wrong utility amounts to the wrong tenant in the current-month view.
 
-And on line 145, role changes also use `'TENANT_UPDATED'`. User management operations are being logged as tenant updates — the Audit Log UI will display these as "Tenant Updated" events, which is misleading for Super Admins reviewing the log.
-
-**Fix:** Add `USER_ROLE_CHANGED` and `USER_REMOVED` to the `AuditAction` type and the `ACTION_CONFIG` in `AuditLogPage.tsx`.
+**Fix:** Key the supplement breakdown by `lease_id` instead of `room_id`, and join it against the current-month report data using the `lease_id` field already present in `RoomBillingStatus`.
 
 ---
 
-### 3. Historical report query is too narrow — filters on both `move_in_date` and `expiry_date`
-**File:** [`ReportsPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/ReportsPage.tsx#L100)
+### 3. `useRealtimeSubscription` has a minor stale closure risk on subscription count changes
+**File:** [`useRealtimeSubscription.ts`](src/hooks/useRealtimeSubscription.ts)
 
-```typescript
-.lte('move_in_date', billingMonth)
-.gte('expiry_date',  billingMonth)
-```
+The channel setup effect depends on `channelName` and `configKey` (a JSON-serialized representation of the subscription configs). This correctly handles config changes. However, if the **number** of subscriptions changes without any config value changing (an edge case with dynamic subscription lists), the channel won't be recreated and the index-based `callbacksRef.current[index]` lookup could mis-route events. Currently low risk given fixed subscription counts in usage.
 
-This silently excludes leases where either date is `null` (optional fields). A tenant with no move-in or no expiry date will never appear in historical reports. This could result in **missing revenue data** in the report.
-
-**Fix:** Use an OR filter: include leases that were active during the billing month regardless of whether those dates are set, or add a fallback using the lease `created_at`.
-
----
-
-### 4. `RoomPicker` may show a stale selected room after property filter changes
-**File:** [`NewLeasePage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/NewLeasePage.tsx#L149)
-
-When the user selects a room, then changes the property filter, the selected `room_id` remains in the form but the `rooms` list refetches. If the selected room is no longer in `rooms`, `selectedRoom` is `undefined` and the picker silently shows the empty state — but the form still holds the old `room_id` value. The user may submit a lease for a room they can't see.
-
-**Fix:** When `propertyId` changes in `RoomPicker`, call `onChange('')` to clear the selection.
-
----
-
-### 5. `useRealtimeSubscription` has a stale closure bug
-**File:** [`useRealtimeSubscription.ts`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/hooks/useRealtimeSubscription.ts#L23)
-
-```typescript
-useEffect(() => {
-  callbacksRef.current = subscriptions.map(s => s.callback)
-}) // ← No dependency array — runs after every render
-```
-
-The `callbacksRef` is updated every render, which is intentional. But the channel setup effect only depends on `channelName`. If the number of subscriptions changes (e.g., additional subscriptions are conditionally added), the channel won't be re-created. This is a subtle correctness issue but low risk given current usage.
-
----
-
-## 🟠 Medium Priority — Code Quality & Maintainability
-
-### 6. Duplicated `useProperties` hook across multiple pages
-**Files:** `DashboardPage.tsx`, `PropertiesPage.tsx`, `NewLeasePage.tsx`, `ReportsPage.tsx`
-
-All four files define their own `useProperties()` function with identical query keys and query functions. Same for `usePropertyRoomStats` (Dashboard + PropertiesPage).
-
-**Fix:** Extract shared hooks to `src/hooks/useProperties.ts`, `usePropertyRoomStats.ts` etc. This removes ~80 lines of duplication and ensures consistent query keys.
-
----
-
-### 7. `uiStore.ts` uses `any` for `modalData`
-**File:** [`uiStore.ts`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/store/uiStore.ts#L16)
-
-```typescript
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-modalData: any
-```
-
-This is suppressed with `eslint-disable`, but it means modal consumers have to cast the data themselves (e.g., `modalData as Property` in PropertiesPage). This is type-unsafe.
-
-**Fix:** Use a discriminated union per modal type:
-```typescript
-type ModalState =
-  | { type: 'edit-room'; data: Room }
-  | { type: 'payment'; data: RoomBillingStatus }
-  | { type: null; data: null }
-  // etc.
-```
-
----
-
-### 8. `STATUS_BADGE` config is defined locally inside `LeaseDetailPage` on every render
-**File:** [`LeaseDetailPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/LeaseDetailPage.tsx#L36)
-
-And `statusBadge` in `TenantProfilePage.tsx` line 202. Both inline objects that never change. They should be module-level constants.
-
----
-
-### 9. `NotFoundPage` is a near-empty stub
-**File:** [`NotFoundPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/NotFoundPage.tsx)
-
-Currently 94 bytes — almost certainly just a `<p>404</p>`. When users hit a broken URL, they get a jarring, unstyled page with no navigation.
-
-**Fix:** Give it a proper design with a "Go to Dashboard" button, matching the app's theme.
-
----
-
-### 10. `MONTH_OPTIONS` constant is rebuilt every module evaluation
-**File:** [`ReportsPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/ReportsPage.tsx#L48)
-
-```typescript
-const MONTH_OPTIONS = buildMonthOptions() // Called once at module load time
-```
-
-This is actually fine for correctness, but means it's computed once when the module is first loaded. If the app runs past midnight into a new month, `MONTH_OPTIONS` is stale until a hard refresh. Low risk, but worth noting.
-
-**Fix:** Move it inside `useMemo()` within the component.
+**Fix:** Include `subscriptions.length` in the `configKey` (or the effect dependency array) as a guard.
 
 ---
 
 ## 🟡 Low Priority — UX & Feature Gaps
 
-### 11. No mobile navigation for Super Admin routes (Audit Log, Settings)
-**File:** [`AppLayout.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/components/layout/AppLayout.tsx#L147)
-
-```typescript
-{visibleItems.slice(0, 5).map(...)} // ← Only first 5 items shown in mobile nav
-```
-
-Super Admin has 7 nav items (Dashboard, Properties, Tenants, Leases, Reports, Audit Log, Settings). The mobile bottom nav only shows the first 5, so **Audit Log and Settings are invisible on mobile for Super Admins**. They'd have to navigate via direct URL.
-
-**Fix:** Add a "More" button or a mobile drawer/sheet for the overflow items.
-
----
-
-### 12. Audit Log is hard-capped at 50 entries with no pagination
-**File:** [`AuditLogPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/AuditLogPage.tsx#L93)
-
-```typescript
-const PAGE_SIZE = 50
-```
-
-There's a notice at the bottom saying "use date range to narrow results", but no actual pagination. Busy systems with many operations will hit this limit constantly.
-
-**Fix:** Add "Load more" (cursor-based pagination) or proper page controls using Supabase's `.range()`.
-
----
-
-### 13. `TenantProfilePage` shows "Notes" field as `<Input>` (single line) but `NewTenantPage` likely has a `<Textarea>`
-**File:** [`TenantProfilePage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/TenantProfilePage.tsx#L175)
-
-The edit form renders notes as `<Input>` (single-line), while notes are likely multi-line text for tenants. This truncates the content.
-
----
-
-### 14. Property address is truncated in `PropertyCard` with no way to see full text
-**File:** [`PropertiesPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/PropertiesPage.tsx#L209)
+### 4. `<select>` dropdown options have hardcoded dark background color
+**Files:** [`ReportsPage.tsx`](src/pages/ReportsPage.tsx), [`AuditLogPage.tsx`](src/pages/AuditLogPage.tsx)
 
 ```tsx
-<p className="text-xs text-muted-foreground/70 mt-0.5 max-w-[200px] truncate">
-  {property.address}
-</p>
+<option value="all" className="bg-[#1a1a2e]">All Properties</option>
 ```
 
-Long addresses are silently cut off with no tooltip or expand affordance. This is inconvenient for users needing to verify the address.
+The `bg-[#1a1a2e]` literal is a hardcoded dark color. In light mode, the native `<option>` elements will render with a dark background that clashes with the light theme. The rest of the app correctly uses theme tokens (`bg-card`, `text-foreground`, etc.).
 
-**Fix:** Add a `title={property.address}` tooltip, or use the `Tooltip` component already available in the project.
-
----
-
-### 15. Operator role sees a "Room Matrix" button on Dashboard but cannot access Tenants/Leases — no guidance
-**File:** [`DashboardPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/DashboardPage.tsx#L459)
-
-```tsx
-{(role === 'admin' || role === 'super_admin') && (
-  <Button asChild ...> Room Matrix </Button>
-)}
-```
-
-The button is correctly gated. But the `OperatorDashboard` (visible to operators) shows property cards with "View rooms →" links — these work fine. The Operator experience is functional, just slightly sparse. Consider adding a "Contact admin" or help note for operators.
+**Fix:** Remove the hardcoded `className` from `<option>` elements — native browser styling handles option backgrounds correctly. Replace the raw `<select>` with a Radix `<Select>` component (already available in the project under `src/components/ui/select.tsx`) which renders a fully themed custom dropdown.
 
 ---
 
-### 16. `LeaseDetailPage` back button uses `navigate(-1)` (browser history), not a fixed route
-**Files:** `LeaseDetailPage.tsx`, `NewLeasePage.tsx`, `TenantProfilePage.tsx`
+### 5. Operator dashboard is sparse — no contextual guidance for operators
+**File:** [`DashboardPage.tsx`](src/pages/DashboardPage.tsx)
 
-Using `navigate(-1)` is problematic if a user navigated directly to the URL (e.g., from a bookmark or shared link) — clicking "Back" would take them out of the app entirely.
+Operators see property cards with "View rooms" links, which work fine. But there is no indication of what they can or cannot do (e.g., that they cannot access Tenants or Leases). A new operator may try to find those sections and be confused by the lack of nav items.
 
-**Fix:** Use a `Link` component pointing to the parent route (e.g., `/leases`, `/tenants`), with `navigate(-1)` as a fallback only.
-
----
-
-## 🔵 Security & Infrastructure Observations
-
-### 17. Supabase anon key is in the frontend (expected, but document it)
-This is by design with Supabase — the anon key is safe to expose. But make sure Row Level Security (RLS) is enabled on **all** tables, especially `user_profiles` (a malicious user with the anon key could query or modify other profiles without RLS).
-
-### 18. Password change uses client-side validation only
-**File:** [`SettingsPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/SettingsPage.tsx#L244)
-
-```typescript
-const { error } = await supabase.auth.updateUser({ password: new_password })
-```
-
-This is correct — Supabase enforces password strength server-side. No action needed.
-
-### 19. `user_profiles` can be deleted by Super Admin without deleting the Supabase Auth user
-**File:** [`SettingsPage.tsx`](file:///Users/stephen/GitHub/Property_&_ Room Rental Management System/src/pages/SettingsPage.tsx#L81)
-
-The warning is shown in the UI. Consider making this a two-step process or blocking it entirely in favor of a Supabase-level workflow. This is a UX/ops risk, not a security bug per se.
+**Fix:** Add a brief onboarding note or role description card to the operator dashboard view explaining their scope (e.g., "Log rent payments from the room matrix").
 
 ---
 
-## 📋 Summary Table
+## 🔵 Infrastructure & Quality
 
-| # | Category | Severity | File | Issue |
-|---|----------|----------|------|-------|
-| 1 | Bug | 🔴 High | `authStore.ts` | Stale role from localStorage before session resolved |
-| 2 | Bug | 🔴 High | `SettingsPage.tsx` | Wrong audit action used for user management events |
-| 3 | Bug | 🔴 High | `ReportsPage.tsx` | Historical report silently excludes leases with null dates |
-| 4 | Bug | 🟠 Medium | `NewLeasePage.tsx` | Stale `room_id` in form after property filter change |
-| 5 | Bug | 🟠 Medium | `useRealtimeSubscription.ts` | Stale closure on subscription count changes |
-| 6 | DX | 🟠 Medium | Multiple pages | Duplicated `useProperties` and `usePropertyRoomStats` hooks |
-| 7 | Type Safety | 🟠 Medium | `uiStore.ts` | `any` type for `modalData` |
-| 8 | Quality | 🟡 Low | `LeaseDetailPage.tsx` | `STATUS_BADGE` defined inline every render |
-| 9 | UX | 🟡 Low | `NotFoundPage.tsx` | 404 page is unstyled stub |
-| 10 | Quality | 🟡 Low | `ReportsPage.tsx` | `MONTH_OPTIONS` stale after midnight |
-| 11 | UX | 🟡 Low | `AppLayout.tsx` | Super Admin routes hidden on mobile nav |
-| 12 | UX | 🟡 Low | `AuditLogPage.tsx` | Hard 50-item cap, no pagination |
-| 13 | UX | 🟡 Low | `TenantProfilePage.tsx` | Notes uses single-line `<Input>` |
-| 14 | UX | 🟡 Low | `PropertiesPage.tsx` | Address truncated with no tooltip |
-| 15 | UX | 🟡 Low | `DashboardPage.tsx` | Operator dashboard lacks contextual guidance |
-| 16 | UX | 🟡 Low | Multiple pages | `navigate(-1)` breaks on direct URL access |
-| 17 | Security | 🔵 Info | Supabase | Confirm RLS enabled on all tables |
-| 18 | Security | ✅ OK | `SettingsPage.tsx` | Password change is server-validated |
-| 19 | Ops | 🔵 Info | `SettingsPage.tsx` | Profile delete doesn't remove Auth user |
+### 6. No automated tests
+**Scope:** Entire project
+
+There is no test runner (Vitest, Jest, etc.) in `package.json`. The billing-status logic (`isLeaseActiveInBillingMonth`, `paymentUtils`, `billingMonth`, `roomUtils`) is pure TypeScript and high-value — exactly the kind of code where a mistake causes silent revenue miscalculation.
+
+**Fix:** Add Vitest + React Testing Library. Start with unit tests for the pure utility functions (`src/utils/`) and integration tests for the React Query hooks. A small suite covering edge cases (null dates, tenant changeover, partial payments) would give high confidence.
+
+---
+
+### 7. No CI pipeline
+**Scope:** Repository root
+
+There is no GitHub Actions (or equivalent) configuration. A type error or lint regression introduced in a PR would only be caught if someone runs `npm run build` locally.
+
+**Fix:** Add a `.github/workflows/ci.yml` that runs `npm run build` and `npm run lint` on every push and pull request. This is a one-time ~15-line file and eliminates an entire class of preventable breakage.
+
+---
+
+## 🔵 Security — Verify
+
+### 8. Confirm RLS is enabled on all tables
+**Scope:** Supabase dashboard
+
+The anon key is intentionally public in a Supabase project — this is by design. But it means any unauthenticated user who knows the project URL could query tables without RLS. In particular, `user_profiles` (which contains team names and roles) should have RLS that restricts reads to authenticated users only.
+
+**Action:** In the Supabase dashboard under **Table Editor**, confirm Row Level Security is toggled **on** for every table: `user_profiles`, `properties`, `rooms`, `tenants`, `leases`, `payment_history`, `audit_log`.
+
+---
+
+## ✅ Previously Fixed Issues
+
+The following were flagged in an earlier audit and have since been resolved:
+
+| # | Issue | Resolution |
+|---|-------|------------|
+| — | Stale auth role from `localStorage` before session resolved | `authStore` no longer persists `profile`/`role`; `isInitialized` flag added |
+| — | Wrong audit action used for user management events | `USER_ROLE_CHANGED` and `USER_REMOVED` now used correctly in `SettingsPage` and `AuditLogPage` |
+| — | Historical report silently excluded leases with null dates | `isLeaseActiveInBillingMonth()` added with `created_at` fallback |
+| — | Stale `room_id` in form after property filter change | `handlePropertyChange()` in `RoomPicker` calls `onChange('')` to clear the selection |
+| — | Duplicated `useProperties` / `usePropertyRoomStats` hooks | Extracted to `src/hooks/useProperties.ts` and `src/hooks/usePropertyRoomStats.ts` |
+| — | `any` type for `modalData` in `uiStore` | Replaced with a fully typed discriminated union (`ModalDataMap` / `ModalSlice`) |
+| — | `STATUS_BADGE` config defined inline per render | Extracted to `src/utils/leaseStatusConfig.ts` shared utility |
+| — | `NotFoundPage` was an unstyled stub | Now a fully designed page with "Go to Dashboard" button |
+| — | `MONTH_OPTIONS` stale after midnight | `useBillingMonthOptions` wraps in `useMemo` keyed on `currentMonthKey` |
+| — | Super Admin routes (Audit Log, Settings) hidden on mobile nav | `MobileBottomNav` now has a "More" overflow sheet for items beyond the 4-tab limit |
+| — | Audit Log hard-capped at 50 entries with no pagination | Full prev/next pagination implemented using Supabase `.range()` |
+| — | Tenant `notes` field rendered as single-line `<Input>` | Updated to `<Textarea rows={3} />` |
+| — | Property address truncated with no way to see full text | Now uses `<TruncatedText>` component (shows full value in tooltip) |
+| — | `navigate(-1)` breaks on direct URL entry | `useSmartBack(fallbackPath)` hook checks `location.key === 'default'` before falling back |
+| — | Removing a team member left the Supabase Auth user intact | Now goes through the `remove-team-member` Edge Function which deletes the Auth user server-side |

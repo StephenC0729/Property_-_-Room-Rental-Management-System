@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Shield,
   UserMinus,
+  AlertTriangle,
 } from 'lucide-react';
 import { format, formatDistanceToNow, subDays, startOfDay } from 'date-fns';
 import { supabase } from '@/lib/supabase';
@@ -84,6 +85,13 @@ const ACTION_CONFIG: Record<
     bgColor: 'bg-violet-500/15',
     dot: 'bg-violet-400',
   },
+  TENANT_FLAGGED: {
+    label: 'Tenant Flagged',
+    icon: AlertTriangle,
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/15',
+    dot: 'bg-red-400',
+  },
   LEASE_CREATED: {
     label: 'Lease Created',
     icon: FileText,
@@ -104,6 +112,13 @@ const ACTION_CONFIG: Record<
     color: 'text-red-400',
     bgColor: 'bg-red-500/15',
     dot: 'bg-red-400',
+  },
+  LEASE_SETTLED: {
+    label: 'Lease Settled',
+    icon: Wallet,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/15',
+    dot: 'bg-amber-400',
   },
   ROOM_STATUS_CHANGED: {
     label: 'Room Updated',
@@ -192,6 +207,15 @@ function formatMetadata(
     case 'TENANT_UPDATED':
       return meta.full_name ? String(meta.full_name) : '';
 
+    case 'TENANT_FLAGGED':
+      return [
+        meta.full_name ? String(meta.full_name) : null,
+        meta.is_flagged === false ? 'unflagged' : 'flagged',
+        meta.flag_reason ? String(meta.flag_reason) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
     case 'LEASE_CREATED':
     case 'LEASE_UPDATED':
       return [
@@ -207,6 +231,18 @@ function formatMetadata(
       return [
         meta.tenant_name ? String(meta.tenant_name) : null,
         meta.room_code ? `Room ${meta.room_code}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+    case 'LEASE_SETTLED':
+      return [
+        meta.tenant_name ? String(meta.tenant_name) : null,
+        meta.room_code ? `Room ${meta.room_code}` : null,
+        meta.outcome ? String(meta.outcome).replace('_', ' ') : null,
+        meta.amount_written_off && Number(meta.amount_written_off) > 0
+          ? `RM ${Number(meta.amount_written_off).toFixed(2)} written off`
+          : null,
       ]
         .filter(Boolean)
         .join(' · ');

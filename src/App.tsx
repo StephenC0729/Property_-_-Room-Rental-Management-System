@@ -19,6 +19,7 @@ import { LeasesPage } from '@/pages/LeasesPage'
 import { LeaseDetailPage } from '@/pages/LeaseDetailPage'
 import { NewLeasePage } from '@/pages/NewLeasePage'
 import { ReportsPage } from '@/pages/ReportsPage'
+import { BadDebtPage } from '@/pages/BadDebtPage'
 import { AuditLogPage } from '@/pages/AuditLogPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -78,6 +79,10 @@ export function App() {
                 <Route
                   path="/reports"
                   element={<RoleGate allowedRoles={['admin', 'super_admin']}><ReportsPage /></RoleGate>}
+                />
+                <Route
+                  path="/bad-debt"
+                  element={<RoleGate allowedRoles={['admin', 'super_admin']}><BadDebtPage /></RoleGate>}
                 />
 
                 {/* Super Admin only */}

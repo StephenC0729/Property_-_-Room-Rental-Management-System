@@ -17,3 +17,17 @@ export const editLeaseSchema = z.object({
 })
 
 export type EditLeaseFormValues = z.infer<typeof editLeaseSchema>
+
+export const settlementSchema = z.object({
+  rent_outstanding: z.coerce.number().min(0, 'Must be 0 or greater'),
+  other_deductions: z.coerce.number().min(0, 'Must be 0 or greater'),
+  deposit_applied:  z.coerce.number().min(0, 'Must be 0 or greater'),
+  outcome:          z.enum(['settled', 'partial', 'written_off']),
+  reason:           z.string().optional(),
+  notes:            z.string().optional(),
+}).refine(
+  d => d.outcome !== 'written_off' || (d.reason?.trim().length ?? 0) > 0,
+  { message: 'A reason is required when writing off bad debt', path: ['reason'] },
+)
+
+export type SettlementFormValues = z.infer<typeof settlementSchema>
